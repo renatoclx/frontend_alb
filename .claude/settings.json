@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:3000/dashboard/clientes -o /dev/null -w \"%{http_code}\\\\n\")",
+      "Bash(NODE_PATH=/home/renato/.npm/_npx/e41f203b7505f1fb/node_modules node /tmp/claude-1000/-home-renato-projects-alb-locacoes-frontend/e5f7144f-697e-45b1-b2e2-4a9b37bf93d5/scratchpad/debug2.js)",
+      "Bash(ps -p 4448 -o pid,etimes,cmd --no-headers)",
+      "Bash(lsof -i:3000 -sTCP:LISTEN)",
+      "Bash(NODE_PATH=/home/renato/.npm/_npx/e41f203b7505f1fb/node_modules node /tmp/claude-1000/-home-renato-projects-alb-locacoes-frontend/e5f7144f-697e-45b1-b2e2-4a9b37bf93d5/scratchpad/debug3.js)",
+      "Bash(curl -sf http://localhost:3000)",
+      "Bash(kill -9 148807 148808 148820)"
+    ]
+  }
+}
