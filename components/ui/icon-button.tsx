@@ -1,4 +1,4 @@
-import { ButtonHTMLAttributes, ReactNode } from "react";
+import { ButtonHTMLAttributes, ReactNode, forwardRef } from "react";
 import Link from "next/link";
 import { cn } from "@/utils/cn";
 
@@ -20,24 +20,37 @@ const variantClasses: Record<IconButtonVariant, string> = {
   danger: "border-error/40 text-error hover:bg-error/10 active:bg-error/20",
 };
 
-export function IconButton({ icon, label, variant = "default", className, href, ...props }: IconButtonProps) {
-  const classes = cn(
-    "inline-flex size-8 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent",
-    variantClasses[variant],
-    className
-  );
+// forwardRef: necessário pro Radix (DropdownMenu/Tooltip etc.) conseguir
+// ancorar o overlay quando um IconButton é usado como trigger.
+export const IconButton = forwardRef<HTMLButtonElement | HTMLAnchorElement, IconButtonProps>(
+  ({ icon, label, variant = "default", className, href, ...props }, ref) => {
+    const classes = cn(
+      "inline-flex size-8 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent",
+      variantClasses[variant],
+      className
+    );
 
-  if (href) {
+    if (href) {
+      return (
+        <Link href={href} ref={ref as never} aria-label={label} title={label} className={classes}>
+          {icon}
+        </Link>
+      );
+    }
+
     return (
-      <Link href={href} aria-label={label} title={label} className={classes}>
+      <button
+        ref={ref as never}
+        type="button"
+        aria-label={label}
+        title={label}
+        className={classes}
+        {...props}
+      >
         {icon}
-      </Link>
+      </button>
     );
   }
+);
 
-  return (
-    <button type="button" aria-label={label} title={label} className={classes} {...props}>
-      {icon}
-    </button>
-  );
-}
+IconButton.displayName = "IconButton";

@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { createCategoria, listCategorias, removeCategoria } from "@/services/categorias-service";
 import type { Categoria } from "@/types/categoria";
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 8;
 
 export default function CategoriasPage() {
   const { notify } = useToast();
@@ -145,7 +145,6 @@ export default function CategoriasPage() {
                         ? "Não é possível excluir: categoria possui produtos cadastrados"
                         : "Excluir"
                     }
-                    variant="danger"
                     disabled={categoria.produtosCount > 0}
                     onClick={() => setCategoriaToDelete(categoria)}
                   />
@@ -159,30 +158,45 @@ export default function CategoriasPage() {
         />
       )}
 
-      <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} />
+      <Pagination
+        page={currentPage}
+        totalPages={totalPages}
+        totalItems={filtered.length}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+      />
 
       <Modal
         isOpen={isCreateModalOpen}
         onClose={closeModal}
         title="Nova Categoria"
+        size="sm"
         footer={
           <>
-            <Button variant="secondary" onClick={closeModal}>
+            <Button size="xl" variant="secondary" onClick={closeModal}>
               Cancelar
             </Button>
-            <Button isLoading={isSaving} onClick={handleSave}>
+            <Button size="xl" isLoading={isSaving} onClick={handleSave}>
               Salvar
             </Button>
           </>
         }
       >
-        <Input label="Nome" value={nome} onChange={(event) => setNome(event.target.value)} error={nomeError} />
+        <Input
+          label="Nome"
+          size="xl"
+          required
+          value={nome}
+          onChange={(event) => setNome(event.target.value)}
+          error={nomeError}
+        />
       </Modal>
 
       <Modal
         isOpen={!!categoriaToDelete}
         onClose={() => setCategoriaToDelete(null)}
         title="Excluir categoria"
+        size="sm"
         footer={
           <>
             <Button variant="secondary" onClick={() => setCategoriaToDelete(null)}>

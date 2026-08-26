@@ -111,7 +111,7 @@ que o tema mudou.
 ## Autenticação mock — como funciona hoje
 
 1. `services/auth-service.ts` simula uma chamada de API: espera 600ms e
-   valida contra um usuário fixo (`admin@albmaquinas.com.br` / `senha123`).
+   valida contra um usuário fixo (`admin@locobra.com.br` / `senha123`).
 2. `hooks/use-auth.ts` chama esse service, guarda o usuário retornado no
    `localStorage` e notifica a aplicação.
 3. `app/dashboard/layout.tsx` verifica `isAuthenticated`; se falso, redireciona

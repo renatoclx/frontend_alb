@@ -7,7 +7,8 @@ export interface Cliente {
   dataNascimento: string | null;
   endereco: string;
   cidade: string;
-  possuiHistorico: boolean;
+  cityId: string;
+  deletedAt: string | null;
 }
 
 export interface ClienteInput {

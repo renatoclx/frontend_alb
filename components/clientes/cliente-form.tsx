@@ -2,13 +2,16 @@
 
 import { FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Combobox } from "@/components/ui/combobox";
+import { FormSection } from "@/components/ui/form-section";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/hooks/use-toast";
 import { findCidadeByNome, searchCidades } from "@/services/cidades-service";
 import type { Cidade } from "@/types/cidade";
 import type { ClienteInput } from "@/types/cliente";
+import { maskDocumento, maskTelefone, onlyDigits } from "@/utils/mask";
 
 interface ClienteFormProps {
   mode: "create" | "edit";
@@ -37,7 +40,14 @@ const emptyValues: ClienteInput = {
 
 export function ClienteForm({ mode, initialValues, onSubmit, submitLabel }: ClienteFormProps) {
   const { notify } = useToast();
-  const [values, setValues] = useState<ClienteInput>(initialValues ?? emptyValues);
+  const [values, setValues] = useState<ClienteInput>(() => {
+    const base = initialValues ?? emptyValues;
+    return {
+      ...base,
+      telefone: maskTelefone(base.telefone),
+      documento: maskDocumento(base.documento),
+    };
+  });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSaving, setIsSaving] = useState(false);
   const [cidadeOptions, setCidadeOptions] = useState<Cidade[]>([]);
@@ -93,7 +103,11 @@ export function ClienteForm({ mode, initialValues, onSubmit, submitLabel }: Clie
     setErrors({});
     setIsSaving(true);
     try {
-      await onSubmit(values);
+      await onSubmit({
+        ...values,
+        telefone: onlyDigits(values.telefone),
+        documento: onlyDigits(values.documento),
+      });
       notify(
         "success",
         mode === "create" ? "Cliente cadastrado com sucesso." : "Cliente atualizado com sucesso."
@@ -107,72 +121,106 @@ export function ClienteForm({ mode, initialValues, onSubmit, submitLabel }: Clie
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Input
-            label="Nome"
-            value={values.nome}
-            onChange={(event) => updateField("nome", event.target.value)}
-            error={errors.nome}
-          />
-          <Input
-            label="E-mail"
-            type="email"
-            value={values.email}
-            onChange={(event) => updateField("email", event.target.value)}
-          />
-          <Input
-            label="Telefone"
-            value={values.telefone}
-            onChange={(event) => updateField("telefone", event.target.value)}
-            error={errors.telefone}
-          />
-          <Input
-            label="Documento (CPF/CNPJ)"
-            value={values.documento}
-            onChange={(event) => updateField("documento", event.target.value)}
-            error={errors.documento}
-          />
-          <Input
-            label="Data de Nascimento"
-            type="date"
-            value={values.dataNascimento ?? ""}
-            onChange={(event) => updateField("dataNascimento", event.target.value || null)}
-          />
-          <Input
-            label="Endereço"
-            value={values.endereco}
-            onChange={(event) => updateField("endereco", event.target.value)}
-            onBlur={handleEnderecoBlur}
-            error={errors.endereco}
-          />
-          <Combobox
-            label="Cidade"
-            value={values.cidade}
-            onChange={handleCidadeChange}
-            onSelect={(option) => {
-              updateField("cidade", option.nome);
-              setCidadeOptions([]);
-            }}
-            options={cidadeOptions}
-            placeholder="Buscar cidade cadastrada..."
-            error={errors.cidade}
-          />
-        </div>
-        <div className="flex justify-end gap-3">
-          <Button type="button" variant="secondary" href="/clientes">
-            Cancelar
-          </Button>
-          <Button type="submit" isLoading={isSaving}>
-            {submitLabel}
-          </Button>
-        </div>
-      </form>
+      {/* Painel ocupa toda a largura disponível; o conteúdo fica centralizado
+          numa faixa de leitura confortável (teste de layout). */}
+      <Card className="flex w-full min-h-0 flex-1 flex-col overflow-y-auto">
+        <form onSubmit={handleSubmit} noValidate className="flex min-h-full flex-col">
+          <CardContent className="mx-auto flex max-w-2xl flex-1 flex-col gap-8">
+            <FormSection title="Dados pessoais">
+              <div className="sm:col-span-2">
+                <Input
+                  label="Nome"
+                  size="xl"
+                  required
+                  value={values.nome}
+                  onChange={(event) => updateField("nome", event.target.value)}
+                  error={errors.nome}
+                />
+              </div>
+              <Input
+                label="Documento (CPF/CNPJ)"
+                size="xl"
+                required
+                value={values.documento}
+                onChange={(event) => updateField("documento", maskDocumento(event.target.value))}
+                error={errors.documento}
+              />
+              <Input
+                label="Data de Nascimento"
+                size="xl"
+                type="date"
+                value={values.dataNascimento ?? ""}
+                onChange={(event) => updateField("dataNascimento", event.target.value || null)}
+                disabled={mode === "edit"}
+                title={mode === "edit" ? "Não pode ser alterada após o cadastro." : undefined}
+              />
+            </FormSection>
+
+            <FormSection title="Contato">
+              <Input
+                label="Telefone"
+                size="xl"
+                required
+                value={values.telefone}
+                onChange={(event) => updateField("telefone", maskTelefone(event.target.value))}
+                error={errors.telefone}
+              />
+              <Input
+                label="E-mail"
+                size="xl"
+                type="email"
+                value={values.email}
+                onChange={(event) => updateField("email", event.target.value)}
+              />
+            </FormSection>
+
+            <FormSection title="Endereço">
+              <div className="sm:col-span-2">
+                <Input
+                  label="Endereço"
+                  size="xl"
+                  required
+                  value={values.endereco}
+                  onChange={(event) => updateField("endereco", event.target.value)}
+                  onBlur={handleEnderecoBlur}
+                  error={errors.endereco}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Combobox
+                  label="Cidade"
+                  size="xl"
+                  required
+                  value={values.cidade}
+                  onChange={handleCidadeChange}
+                  onSelect={(option) => {
+                    updateField("cidade", option.nome);
+                    setCidadeOptions([]);
+                  }}
+                  options={cidadeOptions}
+                  placeholder="Buscar cidade cadastrada..."
+                  error={errors.cidade}
+                />
+              </div>
+            </FormSection>
+          </CardContent>
+
+          <CardFooter className="justify-end">
+            <Button type="button" size="xl" variant="secondary" href="/clientes">
+              Cancelar
+            </Button>
+            <Button type="submit" size="xl" isLoading={isSaving}>
+              {submitLabel}
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
 
       <Modal
         isOpen={showEnderecoConfirm}
         onClose={() => setShowEnderecoConfirm(false)}
         title="Endereço alterado"
+        size="sm"
         footer={<Button onClick={() => setShowEnderecoConfirm(false)}>Entendi</Button>}
       >
         <p className="text-sm text-foreground/70">

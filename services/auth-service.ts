@@ -1,25 +1,20 @@
-import type { LoginCredentials, User } from "@/types/auth";
+import { apiClient } from "@/utils/api-client";
+import { decodeJwtPayload } from "@/utils/jwt";
+import type { AuthSession, LoginCredentials, User } from "@/types/auth";
 
-const MOCK_USER: User = {
-  id: "1",
-  name: "Usuário Teste",
-  email: "admin@albmaquinas.com.br",
-};
+interface LoginResponse {
+  accessToken: string;
+}
 
-const MOCK_PASSWORD = "senha123";
+export async function login(credentials: LoginCredentials): Promise<AuthSession> {
+  const { accessToken } = await apiClient.post<LoginResponse>("/auth/login", credentials);
+  const { sub } = decodeJwtPayload(accessToken);
+  const user = await apiClient.get<User>(`/users/${sub}`, accessToken);
+  return { user, accessToken };
+}
 
-// Mock temporário: simula a latência e o contrato (Promise<User> ou
-// erro) de uma chamada de API real. Quando o backend de autenticação
-// existir, só esta função muda — hook e páginas continuam iguais.
-export async function login(credentials: LoginCredentials): Promise<User> {
+// A API ainda não tem endpoint de recuperação de senha. Mantido como mock
+// até o backend implementar — não valida se o e-mail existe na base.
+export async function requestPasswordReset(email: string): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 600));
-
-  if (
-    credentials.email !== MOCK_USER.email ||
-    credentials.password !== MOCK_PASSWORD
-  ) {
-    throw new Error("E-mail ou senha inválidos.");
-  }
-
-  return MOCK_USER;
 }

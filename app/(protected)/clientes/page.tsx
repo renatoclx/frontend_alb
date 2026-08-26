@@ -1,19 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
+import { Eye, MoreVertical, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table } from "@/components/ui/table";
+import { Tag } from "@/components/ui/tag";
 import { useToast } from "@/hooks/use-toast";
-import { listClientes, removeCliente } from "@/services/clientes-service";
+import { listClientes, removeCliente, restoreCliente } from "@/services/clientes-service";
 import type { Cliente } from "@/types/cliente";
+import { formatDate } from "@/utils/date";
+import { maskDocumento, maskTelefone } from "@/utils/mask";
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 8;
 
 export default function ClientesPage() {
   const { notify } = useToast();
@@ -70,6 +74,16 @@ export default function ClientesPage() {
     }
   }
 
+  async function handleRestore(cliente: Cliente) {
+    try {
+      await restoreCliente(cliente.id);
+      notify("success", "Cliente reativado com sucesso.");
+      loadClientes();
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Não foi possível reativar o cliente.");
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -99,29 +113,58 @@ export default function ClientesPage() {
           columns={[
             { key: "nome", header: "Nome", render: (cliente) => cliente.nome },
             { key: "email", header: "E-mail", render: (cliente) => cliente.email || "-" },
-            { key: "telefone", header: "Telefone", render: (cliente) => cliente.telefone },
+            { key: "telefone", header: "Telefone", render: (cliente) => maskTelefone(cliente.telefone) },
             { key: "endereco", header: "Endereço", render: (cliente) => cliente.endereco },
             { key: "cidade", header: "Cidade", render: (cliente) => cliente.cidade },
+            {
+              key: "status",
+              header: "Status",
+              render: (cliente) => (
+                <Tag variant={cliente.deletedAt ? "error" : "success"} size="sm">
+                  {cliente.deletedAt ? "Inativo" : "Ativo"}
+                </Tag>
+              ),
+            },
             {
               key: "acoes",
               header: "Ação",
               render: (cliente) => (
                 <div className="flex items-center gap-1">
                   <IconButton
-                    icon={<Eye className="size-4" />}
-                    label="Visualizar"
-                    onClick={() => setClienteToView(cliente)}
-                  />
-                  <IconButton
                     icon={<Pencil className="size-4" />}
-                    label="Alterar"
-                    href={`/clientes/${cliente.id}/editar`}
+                    label={cliente.deletedAt ? "Cliente inativo — não é possível alterar" : "Alterar"}
+                    href={cliente.deletedAt ? undefined : `/clientes/${cliente.id}/editar`}
+                    disabled={!!cliente.deletedAt}
                   />
-                  <IconButton
-                    icon={<Trash2 className="size-4" />}
-                    label="Excluir"
-                    variant="danger"
-                    onClick={() => setClienteToDelete(cliente)}
+                  <DropdownMenu
+                    trigger={
+                      <IconButton
+                        icon={<MoreVertical className="size-4" />}
+                        label="Mais ações"
+                      />
+                    }
+                    items={[
+                      {
+                        label: "Visualizar",
+                        icon: <Eye className="size-4" />,
+                        onClick: () => setClienteToView(cliente),
+                      },
+                      {
+                        label: "Excluir",
+                        icon: <Trash2 className="size-4" />,
+                        onClick: () => setClienteToDelete(cliente),
+                        disabled: !!cliente.deletedAt,
+                      },
+                      ...(cliente.deletedAt
+                        ? [
+                            {
+                              label: "Reativar",
+                              icon: <RotateCcw className="size-4" />,
+                              onClick: () => handleRestore(cliente),
+                            },
+                          ]
+                        : []),
+                    ]}
                   />
                 </div>
               ),
@@ -133,12 +176,19 @@ export default function ClientesPage() {
         />
       )}
 
-      <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} />
+      <Pagination
+        page={currentPage}
+        totalPages={totalPages}
+        totalItems={filtered.length}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+      />
 
       <Modal
         isOpen={!!clienteToView}
         onClose={() => setClienteToView(null)}
         title={clienteToView ? `Cliente: ${clienteToView.nome}` : ""}
+        size="md"
         footer={
           <Button variant="secondary" onClick={() => setClienteToView(null)}>
             Fechar
@@ -157,15 +207,15 @@ export default function ClientesPage() {
             </div>
             <div>
               <dt className="text-foreground/50">Telefone</dt>
-              <dd className="text-foreground">{clienteToView.telefone}</dd>
+              <dd className="text-foreground">{maskTelefone(clienteToView.telefone)}</dd>
             </div>
             <div>
               <dt className="text-foreground/50">Documento</dt>
-              <dd className="text-foreground">{clienteToView.documento}</dd>
+              <dd className="text-foreground">{maskDocumento(clienteToView.documento)}</dd>
             </div>
             <div>
               <dt className="text-foreground/50">Data de Nascimento</dt>
-              <dd className="text-foreground">{clienteToView.dataNascimento ?? "-"}</dd>
+              <dd className="text-foreground">{formatDate(clienteToView.dataNascimento)}</dd>
             </div>
             <div>
               <dt className="text-foreground/50">Endereço</dt>
@@ -183,6 +233,7 @@ export default function ClientesPage() {
         isOpen={!!clienteToDelete}
         onClose={() => setClienteToDelete(null)}
         title="Excluir cliente"
+        size="sm"
         footer={
           <>
             <Button variant="secondary" onClick={() => setClienteToDelete(null)}>

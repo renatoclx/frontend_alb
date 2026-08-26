@@ -12,17 +12,17 @@ interface DashboardShellProps {
 }
 
 export function DashboardShell({ user, onLogout, children }: DashboardShellProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar
         isCollapsed={isCollapsed}
         isMobileOpen={isMobileOpen}
         onCloseMobile={() => setIsMobileOpen(false)}
       />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Header
           user={user}
           isSidebarCollapsed={isCollapsed}
@@ -30,7 +30,7 @@ export function DashboardShell({ user, onLogout, children }: DashboardShellProps
           onOpenMobileSidebar={() => setIsMobileOpen(true)}
           onLogout={onLogout}
         />
-        <main className="min-w-0 flex-1 p-6">{children}</main>
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-6">{children}</main>
       </div>
     </div>
   );

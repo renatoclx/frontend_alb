@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Tags, Users, X } from "lucide-react";
+import { CalendarRange, LayoutDashboard, Package, Tags, Users, X } from "lucide-react";
 import { cn } from "@/utils/cn";
 
 interface SidebarProps {
@@ -15,6 +15,8 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/clientes", label: "Clientes", icon: Users },
   { href: "/categorias", label: "Categorias", icon: Tags },
+  { href: "/produtos", label: "Produtos", icon: Package },
+  { href: "/locacoes", label: "Locações", icon: CalendarRange },
 ];
 
 export function Sidebar({ isCollapsed, isMobileOpen, onCloseMobile }: SidebarProps) {
@@ -30,8 +32,8 @@ export function Sidebar({ isCollapsed, isMobileOpen, onCloseMobile }: SidebarPro
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 flex-col border-r border-foreground/10 bg-background transition-transform lg:static lg:flex lg:translate-x-0",
-          isCollapsed ? "lg:w-20" : "lg:w-64",
+          "fixed inset-y-0 left-0 z-50 w-64 flex-col border-r border-foreground/10 bg-sidebar-background transition-[transform,width] duration-300 ease-in-out lg:static lg:flex lg:translate-x-0",
+          isCollapsed ? "lg:w-18" : "lg:w-64",
           isMobileOpen ? "flex translate-x-0" : "hidden -translate-x-full lg:flex"
         )}
       >
@@ -50,7 +52,7 @@ export function Sidebar({ isCollapsed, isMobileOpen, onCloseMobile }: SidebarPro
                 href={href}
                 onClick={onCloseMobile}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-sm px-3 py-2 font-heading text-sm font-bold transition-colors",
                   isCollapsed && "lg:justify-center",
                   isActive
                     ? "bg-primary text-primary-foreground"

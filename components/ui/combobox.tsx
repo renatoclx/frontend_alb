@@ -1,6 +1,9 @@
 "use client";
 
 import { useId, useState } from "react";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
+import { Command as CommandPrimitive } from "cmdk";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/utils/cn";
 
 interface ComboboxOption {
@@ -8,7 +11,26 @@ interface ComboboxOption {
   nome: string;
 }
 
-interface ComboboxProps {
+// Mesma escala de altura do Input/Select (`xl` = 48px, padrão de formulário
+// em docs/forms.md).
+const triggerVariants = cva(
+  "w-full rounded-sm border border-foreground/15 bg-background px-3 placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50",
+  {
+    variants: {
+      size: {
+        xl: "h-12 text-sm",
+        lg: "h-10 text-sm",
+        md: "h-9 text-sm",
+        sm: "h-6 text-xs",
+      },
+    },
+    defaultVariants: {
+      size: "lg",
+    },
+  }
+);
+
+interface ComboboxProps extends VariantProps<typeof triggerVariants> {
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -16,9 +38,20 @@ interface ComboboxProps {
   options: ComboboxOption[];
   placeholder?: string;
   error?: string;
+  required?: boolean;
 }
 
-export function Combobox({ label, value, onChange, onSelect, options, placeholder, error }: ComboboxProps) {
+export function Combobox({
+  label,
+  value,
+  onChange,
+  onSelect,
+  options,
+  placeholder,
+  error,
+  required,
+  size,
+}: ComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const inputId = useId();
 
@@ -28,44 +61,49 @@ export function Combobox({ label, value, onChange, onSelect, options, placeholde
   }
 
   return (
-    <div className="relative flex flex-col gap-1.5">
-      <label htmlFor={inputId} className="text-sm font-medium text-foreground">
-        {label}
-      </label>
-      <input
-        id={inputId}
-        type="text"
-        autoComplete="off"
-        value={value}
-        placeholder={placeholder}
-        onChange={(event) => {
-          onChange(event.target.value);
-          setIsOpen(true);
-        }}
-        onFocus={() => setIsOpen(true)}
-        onBlur={() => setTimeout(() => setIsOpen(false), 120)}
-        className={cn(
-          "h-10 rounded-lg border border-foreground/15 bg-background px-3 text-sm placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50",
-          error && "border-error focus:ring-error/50"
-        )}
-      />
-      {error && <span className="text-xs text-error">{error}</span>}
-      {isOpen && options.length > 0 && (
-        <ul className="absolute top-full z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-foreground/10 bg-background py-1 shadow-sm">
-          {options.map((option) => (
-            <li key={option.id}>
-              <button
-                type="button"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => handleSelect(option)}
-                className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-foreground/5"
+    // `shouldFilter={false}`: a filtragem já acontece fora (busca via API
+    // disparada em `onChange`) — o Command só exibe as `options` recebidas.
+    <CommandPrimitive shouldFilter={false} className="flex flex-col gap-2">
+      <PopoverPrimitive.Root open={isOpen && options.length > 0} onOpenChange={setIsOpen}>
+        <label htmlFor={inputId} className="text-sm font-medium text-foreground">
+          {label}
+          {required && <span className="text-error"> *</span>}
+        </label>
+        <PopoverPrimitive.Anchor asChild>
+          <CommandPrimitive.Input
+            id={inputId}
+            autoComplete="off"
+            value={value}
+            placeholder={placeholder}
+            onValueChange={(next) => {
+              onChange(next);
+              setIsOpen(true);
+            }}
+            onFocus={() => setIsOpen(true)}
+            className={cn(triggerVariants({ size }), error && "border-error focus:ring-error/50")}
+          />
+        </PopoverPrimitive.Anchor>
+        {error && <span className="text-xs text-error">{error}</span>}
+        <PopoverPrimitive.Content
+          align="start"
+          sideOffset={4}
+          onOpenAutoFocus={(event) => event.preventDefault()}
+          className="z-10 w-[var(--radix-popover-trigger-width)] rounded-sm border border-foreground/10 bg-background py-1 shadow-sm"
+        >
+          <CommandPrimitive.List className="max-h-56 overflow-y-auto">
+            {options.map((option) => (
+              <CommandPrimitive.Item
+                key={option.id}
+                value={option.id}
+                onSelect={() => handleSelect(option)}
+                className="cursor-pointer px-3 py-2 text-left text-sm text-foreground data-[selected=true]:bg-foreground/5"
               >
                 {option.nome}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+              </CommandPrimitive.Item>
+            ))}
+          </CommandPrimitive.List>
+        </PopoverPrimitive.Content>
+      </PopoverPrimitive.Root>
+    </CommandPrimitive>
   );
 }

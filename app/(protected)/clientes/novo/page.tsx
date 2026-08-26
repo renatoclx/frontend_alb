@@ -14,8 +14,8 @@ export default function NovoClientePage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-foreground">Novo Cliente</h1>
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <h1 className="shrink-0 text-2xl font-semibold text-foreground">Novo Cliente</h1>
       <ClienteForm mode="create" onSubmit={handleSubmit} submitLabel="Salvar" />
     </div>
   );

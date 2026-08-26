@@ -2,27 +2,15 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 import { login as loginRequest } from "@/services/auth-service";
-import type { LoginCredentials, User } from "@/types/auth";
-
-const STORAGE_KEY = "alb_locacoes:auth-user";
+import type { AuthSession, LoginCredentials, User } from "@/types/auth";
+import { readStoredSession, writeStoredSession } from "@/utils/auth-storage";
 
 // Estado vive fora do React (módulo), não em useState: é o que permite
 // múltiplos componentes usarem useAuth() e enxergarem o mesmo usuário
 // sem precisar de Context/Provider.
 const listeners = new Set<() => void>();
-let cachedUser: User | null = null;
+let cachedSession: AuthSession | null = null;
 let hasReadStorage = false;
-
-// localStorage só existe no navegador; o try/catch cobre acesso em
-// modo privado/bloqueado, onde a leitura pode lançar erro.
-function readStoredUser(): User | null {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as User) : null;
-  } catch {
-    return null;
-  }
-}
 
 // Contrato exigido pelo useSyncExternalStore: registra um "avise-me
 // quando mudar" e devolve a função de cancelamento da inscrição.
@@ -34,12 +22,12 @@ function subscribe(listener: () => void) {
 // Lê o localStorage apenas uma vez (cache em módulo) para que chamadas
 // repetidas devolvam a mesma referência: o React usa Object.is nesse
 // valor para decidir se precisa re-renderizar.
-function getSnapshot() {
+function getSnapshot(): User | null {
   if (!hasReadStorage) {
-    cachedUser = readStoredUser();
+    cachedSession = readStoredSession();
     hasReadStorage = true;
   }
-  return cachedUser;
+  return cachedSession?.user ?? null;
 }
 
 // Usado durante a renderização no servidor (Next.js SSR), onde
@@ -52,34 +40,24 @@ function getServerSnapshot() {
 // Único ponto que altera o estado de auth: grava no localStorage,
 // atualiza o cache e avisa todos os componentes inscritos (listeners)
 // para re-renderizarem com o novo valor.
-function setStoredUser(user: User | null) {
-  if (user) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-  } else {
-    window.localStorage.removeItem(STORAGE_KEY);
-  }
-  cachedUser = user;
+function setStoredSession(session: AuthSession | null) {
+  writeStoredSession(session);
+  cachedSession = session;
   hasReadStorage = true;
   listeners.forEach((listener) => listener());
 }
 
-// Hook de autenticação mock. Usa useSyncExternalStore em vez de
-// useState + useEffect porque o valor inicial vem de uma fonte externa
-// ao React (localStorage): chamar setState dentro de um efeito no
-// mount causa re-render em cascata (alerta do eslint-plugin-react-hooks)
-// e ainda arrisca inconsistência entre a renderização do servidor e a
-// do cliente. useSyncExternalStore resolve os dois problemas.
 export function useAuth() {
   const user = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const login = useCallback(async (credentials: LoginCredentials) => {
-    const loggedUser = await loginRequest(credentials);
-    setStoredUser(loggedUser);
-    return loggedUser;
+    const session = await loginRequest(credentials);
+    setStoredSession(session);
+    return session.user;
   }, []);
 
   const logout = useCallback(() => {
-    setStoredUser(null);
+    setStoredSession(null);
   }, []);
 
   return { user, isAuthenticated: !!user, login, logout };

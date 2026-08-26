@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useLayoutEffect, useSyncExternalStore } from "react";
 
-const STORAGE_KEY = "alb_locacoes:theme";
+const STORAGE_KEY = "locobra:theme";
 
 type Theme = "light" | "dark";
 
@@ -36,8 +36,27 @@ function applyTheme(theme: Theme) {
   listeners.forEach((listener) => listener());
 }
 
+// Mesma lógica do script anti-flash em app/layout.tsx — sem persistir
+// quando não há preferência salva, pra não "fixar" o tema do SO como
+// escolha explícita do usuário.
+function resolveTheme(): Theme {
+  const stored = window.localStorage.getItem(STORAGE_KEY);
+  if (stored === "dark" || stored === "light") return stored;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
 export function useTheme() {
   const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  // Em dev, o Strict Mode remonta o layout e reseta <html> só aos
+  // atributos que o React conhece via JSX, apagando a classe "dark" que
+  // o script anti-flash aplicou antes da hidratação (causa do warning de
+  // hydration mismatch). Reaplica aqui — no-op em produção, onde a classe
+  // já está correta. https://nextjs.org/docs/app/guides/preventing-flash-before-hydration#re-applying-attributes-in-development
+  useLayoutEffect(() => {
+    document.documentElement.classList.toggle("dark", resolveTheme() === "dark");
+    listeners.forEach((listener) => listener());
+  }, []);
 
   const toggleTheme = useCallback(() => {
     applyTheme(theme === "dark" ? "light" : "dark");

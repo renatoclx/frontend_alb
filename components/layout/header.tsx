@@ -40,7 +40,7 @@ export function Header({
             <PanelLeftClose className="size-5" />
           )}
         </button>
-        <span className="text-sm font-semibold">ALB Locações</span>
+        <span className="text-sm font-semibold">LocObra</span>
       </div>
 
       <div className="flex items-center gap-3">

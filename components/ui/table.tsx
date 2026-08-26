@@ -20,14 +20,14 @@ export function Table<T>({
   emptyMessage = "Nenhum registro encontrado.",
 }: TableProps<T>) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-foreground/10">
+    <div className="overflow-x-auto rounded-sm">
       <table className="w-full text-sm">
-        <thead className="bg-foreground/5">
+        <thead className="bg-foreground/3">
           <tr>
             {columns.map((column) => (
               <th
                 key={column.key}
-                className="px-4 py-3 text-left font-medium text-foreground/70"
+                className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-table-header"
               >
                 {column.header}
               </th>
@@ -48,10 +48,10 @@ export function Table<T>({
             data.map((row) => (
               <tr
                 key={getRowKey(row)}
-                className="border-t border-foreground/10 hover:bg-foreground/5"
+                className="border-t border-foreground/5 hover:bg-foreground/3"
               >
                 {columns.map((column) => (
-                  <td key={column.key} className="px-4 py-3">
+                  <td key={column.key} className="px-4 py-3 text-sm text-table-cell">
                     {column.render(row)}
                   </td>
                 ))}
