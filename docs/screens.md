@@ -266,6 +266,7 @@ Layout compartilhado entre as telas abaixo — ver seção "Autenticação" em
 - Visualizar itens locados:
   - Dialog com as informações dos itens naquela locação (Nome, quantidade e valores).
   - Considere o modal-lg para exibir estas informações
+- Realizar devolução.
 - Dentro do kebab:
   - Imprimir Relatório de Locação;
   - Gerar Recibo para pagamento;
@@ -274,6 +275,59 @@ Layout compartilhado entre as telas abaixo — ver seção "Autenticação" em
 
 - A tag de status EM ATRASO deverá contar os dias juntamente com a tag (ex: EM ATRASO HÁ XX DIA(S)).
 - A ação Visualizar itens locados deve ser a padrão na coluna Ações (outras opções ficam no dropdown).
+- A ação Realizar devolução deve realizar justamente a devolução dos itens locados para o lançamento em específico.
+- Ao clicar em Realizar devolução, um modal de confirmação deve surgir. Ao confirmar, o Status da locação deve ser alterado para DEVOLVIDA e o estoque reestabelecido.
+
+---
+
+## Lançar Locação
+
+### Campos
+
+- Campo Buscar Clientes, realizando filtragem e trazendo o cliente já cadastrado de acordo com os dados passados.
+- Botão Confirmar para selecionar o cliente e iniciar o processo de lançamento de locação.
+- Data de inicio da Locação.
+- Data de Devolução.
+- Campo Inserir item:
+  - Este campo também será uma filtragem, que vai buscar os itens já cadastrados;
+  - Campo Quantidade para informar a quantidade locada daquele item em específico;
+  - Campo Preço Unitário;
+  - Botões Limpar e inserir, para que o item buscado seja inserido;
+  - Tabela para verificar os itens que estão sendo inseridos no lançamento da locação, contendo:
+    - Nome do Equipamento;
+    - Quantidade;
+    - Valor unitário;
+    - Valor total;
+    - Botão para remover um produto inserido.
+- Label informado o valor total da Locação realizada;
+- Botão Realizar Locação;
+
+### Regras específicas
+
+- Ao abrir o Lançamento de locação, apenas o campo de Buscar cliente e as respectivas funçlões ficam habilitados, liberando as opções seguintes ao confirmar o cliente ao qual será realizada a locação.
+- Informar caso o cliente não seja encontrado.
+- No âmbito dos itens, o botão de Inserir fica desabilitado enquanto todos os campos de lançamento do item não forem preenchidos;
+- O preço unitário deve vir já preenchido com a informação contida na base de dados do item em questão, podendo ser alterado pelo usuário.
+- O valor do preço unitário não pode ser menor do que o preço cadastrado na base;
+- Itens que estão com a quantidade abaixo da quantidade mínima não devem ser listados;
+- A quantidade informada do item não pode ser maior do que a quantidade existente na base de dados;
+- Caso a quantidade do item selecionado faça com que a quantidade mínima seja atingida, o usuário deve ser informado em um modal de confirmação, para que o seja validada a inserção.
+- Ao clicar em inserir, um modal de confirmação deverá surgir para confirmar a inserção do item;
+- O item deverá ser listado na tabela de Itens inseridos com as devidas informações.
+- Ao clicar para remover o item da tabela, um modal de confirmação deverá ser utilizado para validação e caso a opção seja por remover, ele deve ser removido imediatamente da tabela.
+- A label com o Total da Locação deverá ser contabilizada conforme a inserção/remoção de itens
+- O botão Realizar Locação só deverá habilitado quando existir ao menos 01 item adicionado no lançamento.
+- Ao clicar em Realizar locação, deverá aparecer um modal de confirmação com os equipamentos locados.
+- Ao realizar a locação, o Relatório de Locação deve ser gerado, e o usuário redirecionado a listagem de locações.
+- Campo data de devolução deve ser um Date e aparecer o calendário padrão.
+- Validar se a data de devolução é menor que a data de início ao perder o foco do campo.
+- Concentre as validações em toasters, pois o layout está sendo quebrado ao validar.
+
+### Padrão de Formulário
+
+- Na primeira linha do panel, Buscar cliente e Datas da locação ficam lado a lado.
+- Itens de locação ficará centralizado, com a tabela podendo preencher o panel no eixo X.
+- O scroll deve ser habilitado na tabela de Itens, para não gerar scroll no panel principal
 
 ---
 

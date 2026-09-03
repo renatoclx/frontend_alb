@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Eye, FileText, MoreVertical, Plus, Receipt } from "lucide-react";
+import { Eye, FileText, MoreVertical, PackageCheck, Plus, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { IconButton } from "@/components/ui/icon-button";
@@ -16,7 +16,7 @@ import { RelatorioLocacaoDocument } from "@/components/locacoes/relatorio-locaca
 import { ReciboPagamentoDocument } from "@/components/locacoes/recibo-pagamento-pdf";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { listLocacoes } from "@/services/locacoes-service";
+import { devolverLocacao, listLocacoes } from "@/services/locacoes-service";
 import type { Locacao, LocacaoStatus } from "@/types/locacao";
 import { daysSince, formatDate } from "@/utils/date";
 import { formatMoney } from "@/utils/mask";
@@ -52,12 +52,18 @@ export default function LocacoesPage() {
   const [statusFilter, setStatusFilter] = useState("todos");
   const [page, setPage] = useState(1);
   const [locacaoToView, setLocacaoToView] = useState<Locacao | null>(null);
+  const [locacaoParaDevolver, setLocacaoParaDevolver] = useState<Locacao | null>(null);
+  const [isDevolvendo, setIsDevolvendo] = useState(false);
 
-  useEffect(() => {
+  function loadLocacoes() {
     listLocacoes().then((data) => {
       setLocacoes(data);
       setIsLoading(false);
     });
+  }
+
+  useEffect(() => {
+    loadLocacoes();
   }, []);
 
   const filtered = useMemo(() => {
@@ -105,11 +111,26 @@ export default function LocacoesPage() {
     }
   }
 
+  async function handleConfirmarDevolucao() {
+    if (!locacaoParaDevolver) return;
+    setIsDevolvendo(true);
+    try {
+      await devolverLocacao(locacaoParaDevolver.id);
+      notify("success", "Devolução realizada com sucesso.");
+      setLocacaoParaDevolver(null);
+      loadLocacoes();
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Não foi possível realizar a devolução.");
+    } finally {
+      setIsDevolvendo(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-semibold text-foreground">Locações</h1>
-        <Button icon={<Plus className="size-4" />} disabled title="Cadastro de locação em breve">
+        <Button href="/locacoes/nova" icon={<Plus className="size-4" />}>
           Realizar Locação
         </Button>
       </div>
@@ -170,6 +191,12 @@ export default function LocacoesPage() {
                     icon={<Eye className="size-4" />}
                     label="Visualizar itens locados"
                     onClick={() => setLocacaoToView(locacao)}
+                  />
+                  <IconButton
+                    icon={<PackageCheck className="size-4" />}
+                    label={locacao.status === "devolvida" ? "Locação já devolvida" : "Realizar devolução"}
+                    disabled={locacao.status === "devolvida"}
+                    onClick={() => setLocacaoParaDevolver(locacao)}
                   />
                   <DropdownMenu
                     trigger={<IconButton icon={<MoreVertical className="size-4" />} label="Mais ações" />}
@@ -240,6 +267,30 @@ export default function LocacoesPage() {
               Total: {formatMoney(locacaoToView.valorTotal)}
             </p>
           </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={!!locacaoParaDevolver}
+        onClose={() => setLocacaoParaDevolver(null)}
+        title="Confirmar devolução"
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setLocacaoParaDevolver(null)}>
+              Cancelar
+            </Button>
+            <Button isLoading={isDevolvendo} onClick={handleConfirmarDevolucao}>
+              Confirmar
+            </Button>
+          </>
+        }
+      >
+        {locacaoParaDevolver && (
+          <p className="text-sm text-foreground/70">
+            Confirmar a devolução dos itens locados para <strong>{locacaoParaDevolver.cliente}</strong>? O estoque
+            será restabelecido.
+          </p>
         )}
       </Modal>
     </div>

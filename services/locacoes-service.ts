@@ -75,3 +75,44 @@ export async function listLocacoes(): Promise<Locacao[]> {
 
   return rentalsResult.items.map((rental) => toLocacao(rental, clienteById, produtoById));
 }
+
+export interface LocacaoInput {
+  clienteId: string;
+  dataRetorno: string;
+  itens: { produtoId: string; quantidade: number }[];
+}
+
+// Preço unitário e data de início não são enviados: a API sempre usa o
+// rentalPrice do produto e a data/hora do servidor no momento da criação
+// (não existe campo pra sobrescrever nenhum dos dois — ver docs/forms.md).
+export async function createLocacao(input: LocacaoInput): Promise<Locacao> {
+  const token = getAccessToken();
+  const rental = await apiClient.post<RentalApiModel>(
+    "/rentals",
+    {
+      clientId: input.clienteId,
+      expectedReturnDate: input.dataRetorno,
+      items: input.itens.map((item) => ({ productId: item.produtoId, quantity: item.quantidade })),
+    },
+    token
+  );
+
+  const [clientes, produtos] = await Promise.all([listClientes(), listProdutos()]);
+  const clienteById = new Map(clientes.map((cliente) => [cliente.id, cliente]));
+  const produtoById = new Map(produtos.map((produto) => [produto.id, produto]));
+
+  return toLocacao(rental, clienteById, produtoById);
+}
+
+// Muda o status para DEVOLVIDA e restaura o estoque de cada item — tudo já
+// feito pela API numa transação única (docs/screens.md, Locação > Listagem).
+export async function devolverLocacao(id: string): Promise<Locacao> {
+  const token = getAccessToken();
+  const rental = await apiClient.patch<RentalApiModel>(`/rentals/${id}/return`, {}, token);
+
+  const [clientes, produtos] = await Promise.all([listClientes(), listProdutos()]);
+  const clienteById = new Map(clientes.map((cliente) => [cliente.id, cliente]));
+  const produtoById = new Map(produtos.map((produto) => [produto.id, produto]));
+
+  return toLocacao(rental, clienteById, produtoById);
+}
