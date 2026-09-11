@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LocObra — Frontend
 
-## Getting Started
+Frontend do **LocObra**, sistema de gestão para empresa de locação e venda
+de equipamentos: cadastro de clientes, produtos e categorias, lançamento
+de locações e vendas com controle de estoque, dashboard com indicadores do
+negócio e geração de relatórios/recibos em PDF.
 
-First, run the development server:
+Consome a API em [`../backend`](../backend).
+
+## Stack
+
+- [Next.js 16](https://nextjs.org) (App Router) + [React 19](https://react.dev) + TypeScript
+- [Tailwind CSS v4](https://tailwindcss.com) — design system próprio sobre os
+  primitivos do [Radix UI](https://www.radix-ui.com) e [`cmdk`](https://cmdk.paco.me)
+- [Recharts](https://recharts.org) — gráfico de receita do dashboard
+- [`@react-pdf/renderer`](https://react-pdf.org) — relatórios e recibos em PDF
+- [Sonner](https://sonner.emilkowal.ski) — notificações (toasts)
+
+## Pré-requisitos
+
+- Node.js 20+
+- Backend rodando (veja [`../backend/README.md`](../backend/README.md)) — por padrão em `http://localhost:3333`
+
+## Como rodar
 
 ```bash
+npm install
+
+# .env.local
+echo "NEXT_PUBLIC_API_URL=http://localhost:3333" > .env.local
+
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse [http://localhost:3000](http://localhost:3000). Não há cadastro de
+usuário pela interface — o primeiro usuário precisa ser criado direto na
+API (`POST /users`, rota pública), depois o login normal (`/login`) passa
+a funcionar.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Comando | Descrição |
+| --- | --- |
+| `npm run dev` | Sobe o servidor de desenvolvimento (Turbopack) |
+| `npm run build` | Build de produção |
+| `npm run start` | Sobe o build de produção |
+| `npm run lint` | ESLint |
 
-## Learn More
+## Estrutura
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/            rotas (App Router) — (protected)/ exige sessão
+components/     componentes de UI, por entidade + components/ui (design system)
+services/       toda chamada HTTP fica aqui — nunca direto nos componentes
+hooks/          hooks compartilhados (auth, debounce, toast, tema...)
+types/          tipos de domínio
+utils/          formatação, máscara, cliente HTTP, PDF
+docs/           documentação do projeto (fonte da verdade para regras de UI/negócio)
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Autenticação
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Sessão JWT guardada em `localStorage` (`locobra:auth-session`); token
+expira em 1h e não há refresh — uma chamada autenticada que volte com 401
+desloga e redireciona para `/login`.
 
-## Deploy on Vercel
+## Documentação
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+A pasta [`docs/`](docs/) é a fonte da verdade do projeto — antes de
+alterar uma tela ou regra, ela deve ser consultada. Destaques:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `screens.md` / `screen-patterns.md` / `ui-guidelines.md` / `forms.md` —
+  especificação de telas e padrões de UI
+- `dashboard*.md` — especificação do Dashboard
+- `frontend-architecture.md` / `frontend-rules.md` — convenções de código
+- `implementacao-*.md` — registro técnico de cada rodada de implementação
+- `stack-tecnologico.md` — resumo da stack usada no projeto
