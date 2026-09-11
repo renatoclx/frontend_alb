@@ -1,5 +1,5 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
-import type { Locacao } from "@/types/locacao";
+import type { Venda } from "@/types/venda";
 import { formatDate } from "@/utils/date";
 import { formatMoney, maskDocumento, maskTelefone } from "@/utils/mask";
 
@@ -49,43 +49,39 @@ const styles = StyleSheet.create({
   emission: { fontSize: 8, color: "#71717A", textAlign: "center" },
 });
 
-interface RelatorioLocacaoDocumentProps {
-  locacao: Locacao;
+interface RelatorioVendaDocumentProps {
+  venda: Venda;
   usuarioNome: string;
   emitidoEm: Date;
 }
 
-export function RelatorioLocacaoDocument({ locacao, usuarioNome, emitidoEm }: RelatorioLocacaoDocumentProps) {
+export function RelatorioVendaDocument({ venda, usuarioNome, emitidoEm }: RelatorioVendaDocumentProps) {
   const horaEmissao = emitidoEm.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.headerPanel}>
-          <Text style={styles.title}>Documento de Locação de Equipamentos</Text>
+          <Text style={styles.title}>Documento de Venda de Equipamentos</Text>
           <View style={styles.row}>
             <Text style={styles.label}>Cliente</Text>
-            <Text style={styles.value}>{locacao.cliente}</Text>
+            <Text style={styles.value}>{venda.cliente}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Documento</Text>
-            <Text style={styles.value}>{maskDocumento(locacao.clienteDocumento)}</Text>
+            <Text style={styles.value}>{maskDocumento(venda.clienteDocumento)}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Cidade</Text>
-            <Text style={styles.value}>{locacao.cidade}</Text>
+            <Text style={styles.value}>{venda.cidade}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Telefone</Text>
-            <Text style={styles.value}>{maskTelefone(locacao.clienteTelefone)}</Text>
+            <Text style={styles.value}>{maskTelefone(venda.clienteTelefone)}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Data de Início</Text>
-            <Text style={styles.value}>{formatDate(locacao.dataInicio)}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Data de Devolução</Text>
-            <Text style={styles.value}>{formatDate(locacao.dataRetorno)}</Text>
+            <Text style={styles.label}>Data da Venda</Text>
+            <Text style={styles.value}>{formatDate(venda.dataVenda)}</Text>
           </View>
         </View>
 
@@ -96,7 +92,7 @@ export function RelatorioLocacaoDocument({ locacao, usuarioNome, emitidoEm }: Re
             <Text style={styles.colUnit}>Valor Unitário</Text>
             <Text style={styles.colTotal}>Valor Total</Text>
           </View>
-          {locacao.itens.map((item) => (
+          {venda.itens.map((item) => (
             <View key={item.id} style={styles.tableRow}>
               <Text style={styles.colNome}>{item.produto}</Text>
               <Text style={styles.colQtd}>{item.quantidade}</Text>
@@ -107,12 +103,12 @@ export function RelatorioLocacaoDocument({ locacao, usuarioNome, emitidoEm }: Re
         </View>
 
         <View style={styles.footerPanel}>
-          <Text style={styles.footerTotal}>Valor total da Locação: {formatMoney(locacao.valorTotal)}</Text>
+          <Text style={styles.footerTotal}>Valor total da Venda: {formatMoney(venda.valorTotal)}</Text>
 
           <View style={styles.signature}>
             <View style={styles.signatureBlank} />
             <View style={styles.signatureLine} />
-            <Text style={styles.signatureName}>{locacao.cliente}</Text>
+            <Text style={styles.signatureName}>{venda.cliente}</Text>
           </View>
 
           <Text style={styles.emission}>

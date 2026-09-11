@@ -141,7 +141,10 @@ Hover/pressed dos botões usam a mesma escala (ver seção Botões).
 - Utilizar rounded-sm para bordas arredondadas (4px — confirmado contra o
   Figma, sem alteração).
 - Utilizar Hover nas linhas.
-- Mudar o cursor conforme a ação do botão.
+- Todo botão da aplicação usa `cursor: pointer` — regra global em
+  `app/globals.css` (o Preflight do Tailwind v4 não aplica mais isso).
+  Botões desabilitados mantêm `cursor-not-allowed` (definido nos
+  componentes `Button`/`IconButton`).
 - Não utilizar cores nas bordas.
 
 ### Tamanhos e Estados (referência Figma)

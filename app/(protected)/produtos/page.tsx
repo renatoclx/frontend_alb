@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, MoreVertical, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
@@ -11,8 +11,9 @@ import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table } from "@/components/ui/table";
 import { Tag } from "@/components/ui/tag";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToast } from "@/hooks/use-toast";
-import { listProdutos, removeProduto, restoreProduto } from "@/services/produtos-service";
+import { removeProduto, restoreProduto, searchProdutos } from "@/services/produtos-service";
 import type { Produto } from "@/types/produto";
 import { cn } from "@/utils/cn";
 import { formatMoney } from "@/utils/mask";
@@ -22,38 +23,45 @@ const PAGE_SIZE = 8;
 export default function ProdutosPage() {
   const { notify } = useToast();
   const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const debouncedSearch = useDebouncedValue(search);
   const [produtoToView, setProdutoToView] = useState<Produto | null>(null);
   const [produtoToDelete, setProdutoToDelete] = useState<Produto | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    loadProdutos();
-  }, []);
+    let cancelled = false;
+    searchProdutos({ page, limit: PAGE_SIZE, search: debouncedSearch })
+      .then((result) => {
+        if (cancelled) return;
+        setProdutos(result.items);
+        setTotal(result.total);
+        setIsLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setIsLoading(false);
+        notify("error", "Não foi possível carregar os produtos.");
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, debouncedSearch, refreshKey]);
 
-  function loadProdutos() {
-    setIsLoading(true);
-    listProdutos().then((data) => {
-      setProdutos(data);
-      setIsLoading(false);
-    });
-  }
-
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return produtos;
-    return produtos.filter((produto) => produto.nome.toLowerCase().includes(term));
-  }, [produtos, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   function handleSearchChange(value: string) {
     setSearch(value);
     setPage(1);
+  }
+
+  function reload() {
+    setRefreshKey((key) => key + 1);
   }
 
   async function handleConfirmDelete() {
@@ -63,7 +71,7 @@ export default function ProdutosPage() {
       await removeProduto(produtoToDelete.id);
       notify("success", "Produto excluído com sucesso.");
       setProdutoToDelete(null);
-      loadProdutos();
+      reload();
     } catch (error) {
       notify("error", error instanceof Error ? error.message : "Não foi possível excluir o produto.");
     } finally {
@@ -75,7 +83,7 @@ export default function ProdutosPage() {
     try {
       await restoreProduto(produto.id);
       notify("success", "Produto reativado com sucesso.");
-      loadProdutos();
+      reload();
     } catch (error) {
       notify("error", error instanceof Error ? error.message : "Não foi possível reativar o produto.");
     }
@@ -179,16 +187,16 @@ export default function ProdutosPage() {
               ),
             },
           ]}
-          data={paginated}
+          data={produtos}
           getRowKey={(produto) => produto.id}
           emptyMessage="Nenhum produto encontrado."
         />
       )}
 
       <Pagination
-        page={currentPage}
+        page={page}
         totalPages={totalPages}
-        totalItems={filtered.length}
+        totalItems={total}
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
       />

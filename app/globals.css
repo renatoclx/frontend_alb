@@ -206,3 +206,13 @@ body {
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading), Arial, Helvetica, sans-serif;
 }
+
+@layer base {
+  /* O Preflight do Tailwind v4 não aplica mais `cursor: pointer` em botões.
+     Reposto aqui pra todo botão da aplicação (docs/ui-guidelines.md > Botões).
+     `:not(:disabled)` preserva o `cursor-not-allowed` dos componentes. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}

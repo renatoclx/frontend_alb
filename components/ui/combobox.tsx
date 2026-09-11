@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Command as CommandPrimitive } from "cmdk";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -54,10 +54,27 @@ export function Combobox({
 }: ComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const inputId = useId();
+  const blurTimeout = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => window.clearTimeout(blurTimeout.current), []);
 
   function handleSelect(option: ComboboxOption) {
     onSelect(option);
     setIsOpen(false);
+  }
+
+  // Ao sair do campo (Tab, clique fora): completa com o primeiro resultado da
+  // busca (ou o de nome exato, se houver). O timeout deixa um clique numa
+  // opção resolver primeiro.
+  function handleBlur() {
+    window.clearTimeout(blurTimeout.current);
+    blurTimeout.current = window.setTimeout(() => {
+      setIsOpen(false);
+      if (!value.trim() || options.length === 0) return;
+      const termo = value.trim().toLowerCase();
+      const alvo = options.find((option) => option.nome.toLowerCase() === termo) ?? options[0];
+      if (alvo.nome !== value) onSelect(alvo);
+    }, 150);
   }
 
   return (
@@ -80,6 +97,7 @@ export function Combobox({
               setIsOpen(true);
             }}
             onFocus={() => setIsOpen(true)}
+            onBlur={handleBlur}
             className={cn(triggerVariants({ size }), error && "border-error focus:ring-error/50")}
           />
         </PopoverPrimitive.Anchor>

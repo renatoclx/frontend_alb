@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, MoreVertical, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
@@ -11,8 +11,9 @@ import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table } from "@/components/ui/table";
 import { Tag } from "@/components/ui/tag";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToast } from "@/hooks/use-toast";
-import { listClientes, removeCliente, restoreCliente } from "@/services/clientes-service";
+import { removeCliente, restoreCliente, searchClientes } from "@/services/clientes-service";
 import type { Cliente } from "@/types/cliente";
 import { formatDate } from "@/utils/date";
 import { maskDocumento, maskTelefone } from "@/utils/mask";
@@ -22,41 +23,45 @@ const PAGE_SIZE = 8;
 export default function ClientesPage() {
   const { notify } = useToast();
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const debouncedSearch = useDebouncedValue(search);
   const [clienteToView, setClienteToView] = useState<Cliente | null>(null);
   const [clienteToDelete, setClienteToDelete] = useState<Cliente | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    loadClientes();
-  }, []);
+    let cancelled = false;
+    searchClientes({ page, limit: PAGE_SIZE, search: debouncedSearch })
+      .then((result) => {
+        if (cancelled) return;
+        setClientes(result.items);
+        setTotal(result.total);
+        setIsLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setIsLoading(false);
+        notify("error", "Não foi possível carregar os clientes.");
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, debouncedSearch, refreshKey]);
 
-  function loadClientes() {
-    setIsLoading(true);
-    listClientes().then((data) => {
-      setClientes(data);
-      setIsLoading(false);
-    });
-  }
-
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return clientes;
-    return clientes.filter((cliente) => cliente.nome.toLowerCase().includes(term));
-  }, [clientes, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const paginated = filtered.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  );
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   function handleSearchChange(value: string) {
     setSearch(value);
     setPage(1);
+  }
+
+  function reload() {
+    setRefreshKey((key) => key + 1);
   }
 
   async function handleConfirmDelete() {
@@ -66,7 +71,7 @@ export default function ClientesPage() {
       await removeCliente(clienteToDelete.id);
       notify("success", "Cliente excluído com sucesso.");
       setClienteToDelete(null);
-      loadClientes();
+      reload();
     } catch (error) {
       notify("error", error instanceof Error ? error.message : "Não foi possível excluir o cliente.");
     } finally {
@@ -78,7 +83,7 @@ export default function ClientesPage() {
     try {
       await restoreCliente(cliente.id);
       notify("success", "Cliente reativado com sucesso.");
-      loadClientes();
+      reload();
     } catch (error) {
       notify("error", error instanceof Error ? error.message : "Não foi possível reativar o cliente.");
     }
@@ -170,16 +175,16 @@ export default function ClientesPage() {
               ),
             },
           ]}
-          data={paginated}
+          data={clientes}
           getRowKey={(cliente) => cliente.id}
           emptyMessage="Nenhum cliente encontrado."
         />
       )}
 
       <Pagination
-        page={currentPage}
+        page={page}
         totalPages={totalPages}
-        totalItems={filtered.length}
+        totalItems={total}
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
       />

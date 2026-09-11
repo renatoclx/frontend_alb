@@ -1,8 +1,4 @@
 import { getAccessToken } from "@/utils/auth-storage";
-import { listClientes } from "@/services/clientes-service";
-import { listProdutos } from "@/services/produtos-service";
-import type { Cliente } from "@/types/cliente";
-import type { Produto } from "@/types/produto";
 import type { Locacao, LocacaoItem, LocacaoStatus } from "@/types/locacao";
 import type { PaginatedResult } from "@/types/api";
 import { apiClient } from "@/utils/api-client";
@@ -12,6 +8,7 @@ interface RentalItemApiModel {
   productId: string;
   quantity: number;
   unitPrice: string;
+  product?: { name: string };
 }
 
 interface RentalApiModel {
@@ -23,6 +20,12 @@ interface RentalApiModel {
   returnedAt: string | null;
   status: "ACTIVE" | "RETURNED" | "DELAY";
   items: RentalItemApiModel[];
+  client?: {
+    name: string;
+    document: string;
+    phone: string;
+    city: { name: string } | null;
+  };
 }
 
 const statusFromApi: Record<RentalApiModel["status"], LocacaoStatus> = {
@@ -31,17 +34,14 @@ const statusFromApi: Record<RentalApiModel["status"], LocacaoStatus> = {
   DELAY: "atrasada",
 };
 
-function toLocacao(
-  rental: RentalApiModel,
-  clienteById: Map<string, Cliente>,
-  produtoById: Map<string, Produto>
-): Locacao {
-  const cliente = clienteById.get(rental.clientId);
+// Filtro de status usado na listagem — bate com o `?status=` do backend.
+export type LocacaoStatusFilter = LocacaoStatus;
 
+function toLocacao(rental: RentalApiModel): Locacao {
   const itens: LocacaoItem[] = rental.items.map((item) => ({
     id: item.id,
     produtoId: item.productId,
-    produto: produtoById.get(item.productId)?.nome ?? "",
+    produto: item.product?.name ?? "",
     quantidade: item.quantity,
     valorUnitario: Number(item.unitPrice),
   }));
@@ -49,10 +49,10 @@ function toLocacao(
   return {
     id: rental.id,
     clienteId: rental.clientId,
-    cliente: cliente?.nome ?? "",
-    clienteDocumento: cliente?.documento ?? "",
-    clienteTelefone: cliente?.telefone ?? "",
-    cidade: cliente?.cidade ?? "",
+    cliente: rental.client?.name ?? "",
+    clienteDocumento: rental.client?.document ?? "",
+    clienteTelefone: rental.client?.phone ?? "",
+    cidade: rental.client?.city?.name ?? "",
     dataInicio: rental.startDate,
     dataRetorno: rental.expectedReturnDate,
     dataDevolucao: rental.returnedAt,
@@ -62,18 +62,34 @@ function toLocacao(
   };
 }
 
-export async function listLocacoes(): Promise<Locacao[]> {
+export interface LocacoesQuery {
+  page: number;
+  limit: number;
+  search?: string;
+  status?: LocacaoStatusFilter;
+}
+
+export async function searchLocacoes(
+  query: LocacoesQuery
+): Promise<PaginatedResult<Locacao>> {
   const token = getAccessToken();
-  const [rentalsResult, clientes, produtos] = await Promise.all([
-    apiClient.get<PaginatedResult<RentalApiModel>>("/rentals?limit=1000", token),
-    listClientes(),
-    listProdutos(),
-  ]);
+  const params = new URLSearchParams({
+    page: String(query.page),
+    limit: String(query.limit),
+  });
+  if (query.search?.trim()) params.set("search", query.search.trim());
+  if (query.status) params.set("status", query.status);
 
-  const clienteById = new Map(clientes.map((cliente) => [cliente.id, cliente]));
-  const produtoById = new Map(produtos.map((produto) => [produto.id, produto]));
-
-  return rentalsResult.items.map((rental) => toLocacao(rental, clienteById, produtoById));
+  const result = await apiClient.get<PaginatedResult<RentalApiModel>>(
+    `/rentals?${params.toString()}`,
+    token
+  );
+  return {
+    items: result.items.map(toLocacao),
+    total: result.total,
+    page: result.page,
+    limit: result.limit,
+  };
 }
 
 export interface LocacaoInput {
@@ -96,12 +112,7 @@ export async function createLocacao(input: LocacaoInput): Promise<Locacao> {
     },
     token
   );
-
-  const [clientes, produtos] = await Promise.all([listClientes(), listProdutos()]);
-  const clienteById = new Map(clientes.map((cliente) => [cliente.id, cliente]));
-  const produtoById = new Map(produtos.map((produto) => [produto.id, produto]));
-
-  return toLocacao(rental, clienteById, produtoById);
+  return toLocacao(rental);
 }
 
 // Muda o status para DEVOLVIDA e restaura o estoque de cada item — tudo já
@@ -109,10 +120,5 @@ export async function createLocacao(input: LocacaoInput): Promise<Locacao> {
 export async function devolverLocacao(id: string): Promise<Locacao> {
   const token = getAccessToken();
   const rental = await apiClient.patch<RentalApiModel>(`/rentals/${id}/return`, {}, token);
-
-  const [clientes, produtos] = await Promise.all([listClientes(), listProdutos()]);
-  const clienteById = new Map(clientes.map((cliente) => [cliente.id, cliente]));
-  const produtoById = new Map(produtos.map((produto) => [produto.id, produto]));
-
-  return toLocacao(rental, clienteById, produtoById);
+  return toLocacao(rental);
 }

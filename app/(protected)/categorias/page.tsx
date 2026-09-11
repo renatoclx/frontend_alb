@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
@@ -9,8 +9,9 @@ import { Modal } from "@/components/ui/modal";
 import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table } from "@/components/ui/table";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToast } from "@/hooks/use-toast";
-import { createCategoria, listCategorias, removeCategoria } from "@/services/categorias-service";
+import { createCategoria, removeCategoria, searchCategorias } from "@/services/categorias-service";
 import type { Categoria } from "@/types/categoria";
 
 const PAGE_SIZE = 8;
@@ -18,9 +19,12 @@ const PAGE_SIZE = 8;
 export default function CategoriasPage() {
   const { notify } = useToast();
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const debouncedSearch = useDebouncedValue(search);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [nome, setNome] = useState("");
   const [nomeError, setNomeError] = useState<string | undefined>();
@@ -29,30 +33,34 @@ export default function CategoriasPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    loadCategorias();
-  }, []);
+    let cancelled = false;
+    searchCategorias({ page, limit: PAGE_SIZE, search: debouncedSearch })
+      .then((result) => {
+        if (cancelled) return;
+        setCategorias(result.items);
+        setTotal(result.total);
+        setIsLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setIsLoading(false);
+        notify("error", "Não foi possível carregar as categorias.");
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, debouncedSearch, refreshKey]);
 
-  function loadCategorias() {
-    setIsLoading(true);
-    listCategorias().then((data) => {
-      setCategorias(data);
-      setIsLoading(false);
-    });
-  }
-
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return categorias;
-    return categorias.filter((categoria) => categoria.nome.toLowerCase().includes(term));
-  }, [categorias, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   function handleSearchChange(value: string) {
     setSearch(value);
     setPage(1);
+  }
+
+  function reload() {
+    setRefreshKey((key) => key + 1);
   }
 
   function openCreateModal() {
@@ -75,7 +83,7 @@ export default function CategoriasPage() {
       await createCategoria(nome);
       notify("success", "Categoria cadastrada com sucesso.");
       closeModal();
-      loadCategorias();
+      reload();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Não foi possível salvar a categoria.";
       setNomeError(message);
@@ -92,7 +100,7 @@ export default function CategoriasPage() {
       await removeCategoria(categoriaToDelete.id);
       notify("success", "Categoria excluída com sucesso.");
       setCategoriaToDelete(null);
-      loadCategorias();
+      reload();
     } catch (error) {
       notify("error", error instanceof Error ? error.message : "Não foi possível excluir a categoria.");
     } finally {
@@ -152,16 +160,16 @@ export default function CategoriasPage() {
               ),
             },
           ]}
-          data={paginated}
+          data={categorias}
           getRowKey={(categoria) => categoria.id}
           emptyMessage="Nenhuma categoria encontrada."
         />
       )}
 
       <Pagination
-        page={currentPage}
+        page={page}
         totalPages={totalPages}
-        totalItems={filtered.length}
+        totalItems={total}
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
       />

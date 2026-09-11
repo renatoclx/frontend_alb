@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, FileText, MoreVertical, PackageCheck, Plus, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
@@ -15,69 +15,66 @@ import { Pagination } from "@/components/ui/pagination";
 import { RelatorioLocacaoDocument } from "@/components/locacoes/relatorio-locacao-pdf";
 import { ReciboPagamentoDocument } from "@/components/locacoes/recibo-pagamento-pdf";
 import { useAuth } from "@/hooks/use-auth";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToast } from "@/hooks/use-toast";
-import { devolverLocacao, listLocacoes } from "@/services/locacoes-service";
+import { devolverLocacao, searchLocacoes } from "@/services/locacoes-service";
 import type { Locacao, LocacaoStatus } from "@/types/locacao";
 import { daysSince, formatDate } from "@/utils/date";
+import {
+  locacaoStatusFilterOptions,
+  locacaoStatusLabel,
+  locacaoStatusVariant,
+} from "@/utils/locacao-status";
 import { formatMoney } from "@/utils/mask";
 import { downloadPdf } from "@/utils/pdf";
 
 const PAGE_SIZE = 8;
 
-const statusLabel: Record<LocacaoStatus, string> = {
-  ativa: "Ativa",
-  devolvida: "Devolvida",
-  atrasada: "Em atraso",
-};
-
-const statusVariant: Record<LocacaoStatus, "info" | "success" | "error"> = {
-  ativa: "info",
-  devolvida: "success",
-  atrasada: "error",
-};
-
-const statusFilterOptions = [
-  { value: "todos", label: "Todos os status" },
-  { value: "ativa", label: "Ativa" },
-  { value: "devolvida", label: "Devolvida" },
-  { value: "atrasada", label: "Em atraso" },
-];
-
 export default function LocacoesPage() {
   const { user } = useAuth();
   const { notify } = useToast();
   const [locacoes, setLocacoes] = useState<Locacao[]>([]);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [page, setPage] = useState(1);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const debouncedSearch = useDebouncedValue(search);
   const [locacaoToView, setLocacaoToView] = useState<Locacao | null>(null);
   const [locacaoParaDevolver, setLocacaoParaDevolver] = useState<Locacao | null>(null);
   const [isDevolvendo, setIsDevolvendo] = useState(false);
 
-  function loadLocacoes() {
-    listLocacoes().then((data) => {
-      setLocacoes(data);
-      setIsLoading(false);
-    });
-  }
-
   useEffect(() => {
-    loadLocacoes();
-  }, []);
+    let cancelled = false;
+    searchLocacoes({
+      page,
+      limit: PAGE_SIZE,
+      search: debouncedSearch,
+      status: statusFilter === "todos" ? undefined : (statusFilter as LocacaoStatus),
+    })
+      .then((result) => {
+        if (cancelled) return;
+        setLocacoes(result.items);
+        setTotal(result.total);
+        setIsLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setIsLoading(false);
+        notify("error", "Não foi possível carregar as locações.");
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, debouncedSearch, statusFilter, refreshKey]);
 
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return locacoes.filter((locacao) => {
-      const matchesSearch = !term || locacao.cliente.toLowerCase().includes(term);
-      const matchesStatus = statusFilter === "todos" || locacao.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [locacoes, search, statusFilter]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  function reload() {
+    setRefreshKey((key) => key + 1);
+  }
 
   function handleSearchChange(value: string) {
     setSearch(value);
@@ -118,7 +115,7 @@ export default function LocacoesPage() {
       await devolverLocacao(locacaoParaDevolver.id);
       notify("success", "Devolução realizada com sucesso.");
       setLocacaoParaDevolver(null);
-      loadLocacoes();
+      reload();
     } catch (error) {
       notify("error", error instanceof Error ? error.message : "Não foi possível realizar a devolução.");
     } finally {
@@ -148,7 +145,7 @@ export default function LocacoesPage() {
           label="Status"
           value={statusFilter}
           onChange={handleStatusFilterChange}
-          options={statusFilterOptions}
+          options={locacaoStatusFilterOptions}
           className="max-w-xs"
         />
       </div>
@@ -170,10 +167,10 @@ export default function LocacoesPage() {
               key: "status",
               header: "Status",
               render: (locacao) => (
-                <Tag variant={statusVariant[locacao.status]} size="sm">
+                <Tag variant={locacaoStatusVariant[locacao.status]} size="sm">
                   {locacao.status === "atrasada"
                     ? `Em atraso há ${daysSince(locacao.dataRetorno)} dia(s)`
-                    : statusLabel[locacao.status]}
+                    : locacaoStatusLabel[locacao.status]}
                 </Tag>
               ),
             },
@@ -217,16 +214,16 @@ export default function LocacoesPage() {
               ),
             },
           ]}
-          data={paginated}
+          data={locacoes}
           getRowKey={(locacao) => locacao.id}
           emptyMessage="Nenhuma locação encontrada."
         />
       )}
 
       <Pagination
-        page={currentPage}
+        page={page}
         totalPages={totalPages}
-        totalItems={filtered.length}
+        totalItems={total}
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
       />

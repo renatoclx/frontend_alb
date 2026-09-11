@@ -242,6 +242,115 @@ Layout compartilhado entre as telas abaixo — ver seção "Autenticação" em
 
 ---
 
+# Vendas
+
+## Listagem
+
+### Filtros de Pesquisa
+
+- Nome do Cliente.
+- Nome do Produto.
+- Botão Realizar Venda.
+
+### Campos
+
+- Cliente.
+- Cidade.
+- Data de Venda.
+- Valor Total.
+
+### Ações
+
+- Visualizar itens vendidos:
+  - Dialog com as informações dos itens naquela venda (Nome, quantidade e valores).
+  - Considere o modal-lg para exibir estas informações.
+- Dentro do kebab:
+  - Imprimir Relatório de Venda;
+  - Gerar Recibo para Pagamento;
+
+---
+
+## Lançar Venda
+
+### Campos
+
+- Campo Buscar Clientes, realizando filtragem e trazendo o cliente já cadastrado de acordo com os dados passados.
+- Botão Confirmar para selecionar o cliente e iniciar o processo de lançamento de venda.
+- Data de venda (campo desabilitado, apenas para informar a data do dia).
+- Campo Inserir item:
+  - Este campo também será uma filtragem, que vai buscar os itens já cadastrados;
+  - Apenas os produtos do type SALE devem aparecer nesta filtragem;
+  - Campo Quantidade para informar a quantidade locada daquele item em específico;
+  - Campo Preço Unitário (desabilitado, apenas informativo);
+  - Botões Limpar e inserir, para que o item buscado seja inserido;
+  - Tabela para verificar os itens que estão sendo inseridos no lançamento da venda, contendo:
+    - Nome do Equipamento;
+    - Quantidade;
+    - Valor unitário;
+    - Valor total;
+    - Botão para remover um produto inserido.
+- Label informado o valor total da Venda realizada;
+- Botão Lançar Venda;
+
+### Regras específicas
+
+- Ao abrir o Lançamento de venda, apenas o campo de Buscar cliente e as respectivas funções ficam habilitados, liberando as opções seguintes ao confirmar o cliente ao qual será realizada a venda.
+- Informar caso o cliente não seja encontrado.
+- No âmbito dos itens, o botão de Inserir fica desabilitado enquanto todos os campos de lançamento do item não forem preenchidos;
+- O preço unitário deve vir já preenchido com a informação contida na base de dados do item em questão, apenas informativo, conforme descrito nos campos.
+- A quantidade informada do item não pode ser maior do que a quantidade existente na base de dados;
+- Caso a quantidade do item selecionado faça com que a quantidade mínima seja atingida, o usuário deve ser informado em um modal de confirmação, para que o seja validada a inserção.
+- Ao clicar em inserir, um modal de confirmação deverá surgir para confirmar a inserção do item;
+- O item deverá ser listado na tabela de Itens inseridos com as devidas informações.
+- Ao clicar para remover o item da tabela, um modal de confirmação deverá ser utilizado para validação e caso a opção seja por remover, ele deve ser removido imediatamente da tabela.
+- A label com o Valor Total da Venda deverá ser contabilizada conforme a inserção/remoção de itens
+- O botão Realizar Venda só deverá habilitado quando existir ao menos 01 item adicionado no lançamento.
+- Ao clicar em Realizar Venda, deverá aparecer um modal de confirmação com os equipamentos a serem vendidos.
+- Ao realizar a venda, o Relatório de Venda deve ser gerado, e o usuário redirecionado a listagem de Vendas.
+- Concentre as validações em toasters, pois o layout está sendo quebrado ao validar.
+
+### Padrão de Formulário
+
+- Na primeira linha do panel, Buscar cliente e Datas da Venda ficam lado a lado.
+- Itens de venda ficará centralizado, com a tabela podendo preencher o panel no eixo X.
+- O scroll deve ser habilitado na tabela de Itens, para não gerar scroll no panel principal.
+
+---
+
+## Relatório de Venda
+
+- O Relatório deverá ser gerado em PDF em um modelo para impressão (A4).
+- O Relatório se divirá em 03 pequenos painéis;
+- Nestes painéis deverão conter:
+  - Cabeçalho:
+    - Título (Documento de Venda de Equipamentos).
+    - Nome, Documento, Cidade, Telefone (Cliente);
+    - Data da Venda;
+  - Corpo do Relatório:
+    - Nome do Item vendido;
+    - Quantidade;
+    - Valor Unitário;
+    - Valor total por item (Valor Unitário \* Quantidade);
+    - Rodapé:
+    - Valor total da Venda (soma dos itens);
+    - Campo para assinatura do cliente com seu respectivo nome alinhados ao centro, um abaixo do outro.
+    - Ao final PDF, exibir data e horário de emissão do relatório, juntamente com o usuário que gerou.
+    - Fixar o rodapé no final da "folha A4", deixando o espaço maior para os itens locados.
+
+---
+
+## Recibo de Pagamento
+
+- O recibo deverá ser gerado em PDF em um modelo para impressão (A5).
+- "Envolver" as informações com uma pequena borda com cantos arrendodados para melhor UX.
+- Neste recibo deverá conter:
+  - Nome, documento e cidade do cliente;
+  - Valor total da venda centralizado no documento;
+  - Campo para assinatura do recebedor nome alinhados ao centro, um abaixo do outro.
+  - Data e horário de emissão;
+
+---
+
 # Locação
 
 ## Listagem
@@ -346,7 +455,7 @@ Layout compartilhado entre as telas abaixo — ver seção "Autenticação" em
     - Quantidade;
     - Valor Unitário;
     - Valor total por item (Valor Unitário \* Quantidade);
-      Rodapé:
+    - Rodapé:
     - Valor total da Locação (soma dos itens);
     - Campo para assinatura do cliente com seu respectivo nome alinhados ao centro, um abaixo do outro.
     - Ao final PDF, exibir data e horário de emissão do relatório, juntamente com o usuário que gerou.

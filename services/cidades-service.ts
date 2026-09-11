@@ -8,33 +8,27 @@ interface CityApiModel {
   name: string;
 }
 
-// A API não tem busca por nome, só paginação. Cidades praticamente não
-// mudam em runtime, então buscamos a lista inteira uma vez (limit alto) e
-// cacheamos em memória — o combobox filtra localmente a partir daí.
-let cidadesCache: Cidade[] | null = null;
-
-async function getAllCidades(): Promise<Cidade[]> {
-  if (cidadesCache) return cidadesCache;
-  const token = getAccessToken();
-  const result = await apiClient.get<PaginatedResult<CityApiModel>>("/cities?limit=1000", token);
-  cidadesCache = result.items.map((city) => ({ id: city.id, nome: city.name }));
-  return cidadesCache;
+function toCidade(city: CityApiModel): Cidade {
+  return { id: city.id, nome: city.name };
 }
 
+// Busca por nome (combobox de cidade no cadastro/alteração de cliente).
 export async function searchCidades(query: string): Promise<Cidade[]> {
-  const term = query.trim().toLowerCase();
+  const term = query.trim();
   if (!term) return [];
-  const cidades = await getAllCidades();
-  return cidades.filter((cidade) => cidade.nome.toLowerCase().includes(term)).slice(0, 8);
+  const token = getAccessToken();
+  const params = new URLSearchParams({ limit: "8", search: term });
+  const result = await apiClient.get<PaginatedResult<CityApiModel>>(
+    `/cities?${params.toString()}`,
+    token
+  );
+  return result.items.map(toCidade);
 }
 
+// Valida se a cidade digitada existe (create/update de cliente).
 export async function findCidadeByNome(nome: string): Promise<Cidade | undefined> {
   const term = nome.trim().toLowerCase();
-  const cidades = await getAllCidades();
+  if (!term) return undefined;
+  const cidades = await searchCidades(nome);
   return cidades.find((cidade) => cidade.nome.toLowerCase() === term);
-}
-
-export async function findCidadeById(id: string): Promise<Cidade | undefined> {
-  const cidades = await getAllCidades();
-  return cidades.find((cidade) => cidade.id === id);
 }

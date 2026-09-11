@@ -1,5 +1,5 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
-import type { Locacao } from "@/types/locacao";
+import type { Venda } from "@/types/venda";
 import { formatMoney, maskDocumento } from "@/utils/mask";
 
 const styles = StyleSheet.create({
@@ -23,12 +23,12 @@ const styles = StyleSheet.create({
   emission: { fontSize: 8, color: "#71717A", textAlign: "center" },
 });
 
-interface ReciboPagamentoDocumentProps {
-  locacao: Locacao;
+interface ReciboPagamentoVendaDocumentProps {
+  venda: Venda;
   emitidoEm: Date;
 }
 
-export function ReciboPagamentoDocument({ locacao, emitidoEm }: ReciboPagamentoDocumentProps) {
+export function ReciboPagamentoVendaDocument({ venda, emitidoEm }: ReciboPagamentoVendaDocumentProps) {
   const horaEmissao = emitidoEm.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   const dataEmissao = emitidoEm.toLocaleDateString("pt-BR");
 
@@ -40,18 +40,18 @@ export function ReciboPagamentoDocument({ locacao, emitidoEm }: ReciboPagamentoD
 
           <View style={styles.row}>
             <Text style={styles.label}>Cliente</Text>
-            <Text style={styles.value}>{locacao.cliente}</Text>
+            <Text style={styles.value}>{venda.cliente}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Documento</Text>
-            <Text style={styles.value}>{maskDocumento(locacao.clienteDocumento)}</Text>
+            <Text style={styles.value}>{maskDocumento(venda.clienteDocumento)}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Cidade</Text>
-            <Text style={styles.value}>{locacao.cidade}</Text>
+            <Text style={styles.value}>{venda.cidade}</Text>
           </View>
 
-          <Text style={styles.total}>Valor recebido: {formatMoney(locacao.valorTotal)}</Text>
+          <Text style={styles.total}>Valor recebido: {formatMoney(venda.valorTotal)}</Text>
 
           <View style={styles.signature}>
             <View style={styles.signatureBlank} />

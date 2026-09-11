@@ -10,11 +10,11 @@ import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Table } from "@/components/ui/table";
-import { RelatorioLocacaoDocument } from "@/components/locacoes/relatorio-locacao-pdf";
+import { RelatorioVendaDocument } from "@/components/vendas/relatorio-venda-pdf";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { searchClientesParaLancamento } from "@/services/clientes-service";
-import { createLocacao } from "@/services/locacoes-service";
+import { createVenda } from "@/services/vendas-service";
 import { searchProdutosParaLancamento } from "@/services/produtos-service";
 import type { Cliente } from "@/types/cliente";
 import type { Produto } from "@/types/produto";
@@ -27,15 +27,9 @@ interface ItemInserido {
   quantidade: number;
 }
 
-const dataInicio = new Date().toISOString().slice(0, 10);
+const dataVenda = new Date().toISOString().slice(0, 10);
 
-function amanha(): string {
-  const data = new Date();
-  data.setDate(data.getDate() + 1);
-  return data.toISOString().slice(0, 10);
-}
-
-export default function NovaLocacaoPage() {
+export default function NovaVendaPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { notify } = useToast();
@@ -50,9 +44,6 @@ export default function NovaLocacaoPage() {
   const [clienteEscolhido, setClienteEscolhido] = useState<Cliente | null>(null);
   const [clienteConfirmado, setClienteConfirmado] = useState<Cliente | null>(null);
 
-  // Datas
-  const [dataRetorno, setDataRetorno] = useState("");
-
   // Item em edição
   const [itemBusca, setItemBusca] = useState("");
   const [itemOpcoes, setItemOpcoes] = useState<Produto[]>([]);
@@ -65,10 +56,10 @@ export default function NovaLocacaoPage() {
   const [avisoQuantidadeMinima, setAvisoQuantidadeMinima] = useState(false);
   const [itemParaRemover, setItemParaRemover] = useState<number | null>(null);
 
-  const [showConfirmLocacao, setShowConfirmLocacao] = useState(false);
+  const [showConfirmVenda, setShowConfirmVenda] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const valorTotal = itens.reduce((soma, item) => soma + item.quantidade * (item.produto.precoLocacao ?? 0), 0);
+  const valorTotal = itens.reduce((soma, item) => soma + item.quantidade * (item.produto.precoVenda ?? 0), 0);
 
   async function handleClienteBuscaChange(value: string) {
     setClienteBusca(value);
@@ -100,13 +91,12 @@ export default function NovaLocacaoPage() {
     setItemBusca(value);
     setItemEscolhido(null);
     const reqId = ++itemReqId.current;
-    const encontrados = await searchProdutosParaLancamento({ search: value, tipo: "locacao" });
+    const encontrados = await searchProdutosParaLancamento({ search: value, tipo: "venda" });
     if (reqId !== itemReqId.current) return;
-    // Regra da Locação: produtos abaixo da quantidade mínima não são listados
-    // (docs/screens.md, Locação > Lançar Locação).
-    const elegiveis = encontrados.filter(
-      (produto) => produto.quantidade >= produto.quantidadeMinima
-    );
+    // Diferente da Locação, produtos abaixo da quantidade mínima continuam
+    // listados (a doc de Venda não os exclui); só exige estoque > 0, já
+    // garantido pelo backend ao filtrar `includeDeleted=false` + na inserção.
+    const elegiveis = encontrados.filter((produto) => produto.quantidade > 0);
     setItemOpcoes(elegiveis);
     const termo = value.trim().toLowerCase();
     setItemEscolhido(elegiveis.find((produto) => produto.nome.toLowerCase() === termo) ?? null);
@@ -163,45 +153,38 @@ export default function NovaLocacaoPage() {
     setItemParaRemover(null);
   }
 
-  function handleDataRetornoBlur() {
-    if (dataRetorno && dataRetorno < dataInicio) {
-      notify("error", "A data de devolução não pode ser anterior à data de início.");
-    }
-  }
-
-  async function handleRealizarLocacao() {
+  async function handleRealizarVenda() {
     if (!clienteConfirmado || itens.length === 0) return;
     setIsSaving(true);
     try {
-      const locacao = await createLocacao({
+      const venda = await createVenda({
         clienteId: clienteConfirmado.id,
-        dataRetorno,
         itens: itens.map((item) => ({ produtoId: item.produto.id, quantidade: item.quantidade })),
       });
 
       await downloadPdf(
-        <RelatorioLocacaoDocument locacao={locacao} usuarioNome={user?.name ?? ""} emitidoEm={new Date()} />,
-        `relatorio-locacao-${locacao.id}.pdf`
+        <RelatorioVendaDocument venda={venda} usuarioNome={user?.name ?? ""} emitidoEm={new Date()} />,
+        `relatorio-venda-${venda.id}.pdf`
       );
 
-      notify("success", "Locação realizada com sucesso.");
-      router.push("/locacoes");
+      notify("success", "Venda realizada com sucesso.");
+      router.push("/vendas");
     } catch (error) {
-      notify("error", error instanceof Error ? error.message : "Não foi possível realizar a locação.");
+      notify("error", error instanceof Error ? error.message : "Não foi possível realizar a venda.");
     } finally {
       setIsSaving(false);
-      setShowConfirmLocacao(false);
+      setShowConfirmVenda(false);
     }
   }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <h1 className="shrink-0 text-2xl font-semibold text-foreground">Realizar Locação</h1>
+      <h1 className="shrink-0 text-2xl font-semibold text-foreground">Realizar Venda</h1>
 
       <Card className="flex w-full min-h-0 flex-1 flex-col overflow-y-auto">
         <div className="flex min-h-0 flex-1 flex-col">
           <CardContent className="flex w-full flex-1 flex-col gap-8">
-            {/* Cliente, Datas e Itens ficam lado a lado na primeira linha do
+            {/* Cliente, Data e Itens ficam lado a lado na primeira linha do
                 painel, ocupando a largura total (docs/screens.md). */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
               <div className="flex flex-col gap-4">
@@ -237,30 +220,16 @@ export default function NovaLocacaoPage() {
 
               <div className="flex flex-col gap-4">
                 <h2 className="border-b border-border pb-2 text-base font-semibold text-foreground">
-                  Datas da Locação
+                  Data da Venda
                 </h2>
-                {/* grid, não flex: o className do Input estiliza o <input>
-                    interno, não a div que é o item da linha — grid garante
-                    que cada campo ocupe metade da linha de verdade. */}
                 <div className="grid grid-cols-2 gap-3">
-                  <Input label="Data de Início" size="xl" type="date" value={dataInicio} disabled />
-                  <Input
-                    label="Data de Devolução"
-                    size="xl"
-                    type="date"
-                    required
-                    min={amanha()}
-                    value={dataRetorno}
-                    onChange={(event) => setDataRetorno(event.target.value)}
-                    onBlur={handleDataRetornoBlur}
-                    disabled={!clienteConfirmado}
-                  />
+                  <Input label="Data da Venda" size="xl" type="date" value={dataVenda} disabled />
                 </div>
               </div>
 
               <div className="flex flex-col gap-4">
                 <h2 className="border-b border-border pb-2 text-base font-semibold text-foreground">
-                  Itens da Locação
+                  Itens da Venda
                 </h2>
 
                 {/* flex-grow, sem wrap: esta coluna é 1/3 do painel, não a
@@ -277,7 +246,7 @@ export default function NovaLocacaoPage() {
                       onChange={handleItemBuscaChange}
                       onSelect={handleItemSelect}
                       options={itemOpcoes}
-                      placeholder="Buscar produto de locação..."
+                      placeholder="Buscar produto de venda..."
                     />
                   </div>
                   <div className="flex-1">
@@ -294,7 +263,7 @@ export default function NovaLocacaoPage() {
                     <Input
                       label="Preço Unitário"
                       size="xl"
-                      value={itemEscolhido ? formatMoney(itemEscolhido.precoLocacao ?? 0) : ""}
+                      value={itemEscolhido ? formatMoney(itemEscolhido.precoVenda ?? 0) : ""}
                       disabled
                     />
                   </div>
@@ -320,12 +289,12 @@ export default function NovaLocacaoPage() {
                     {
                       key: "unitario",
                       header: "Valor Unitário",
-                      render: (item: ItemInserido) => formatMoney(item.produto.precoLocacao ?? 0),
+                      render: (item: ItemInserido) => formatMoney(item.produto.precoVenda ?? 0),
                     },
                     {
                       key: "total",
                       header: "Valor Total",
-                      render: (item: ItemInserido) => formatMoney(item.quantidade * (item.produto.precoLocacao ?? 0)),
+                      render: (item: ItemInserido) => formatMoney(item.quantidade * (item.produto.precoVenda ?? 0)),
                     },
                     {
                       key: "acoes",
@@ -347,22 +316,22 @@ export default function NovaLocacaoPage() {
               </div>
 
               <p className="text-right text-lg font-semibold text-foreground">
-                Valor total da Locação: {formatMoney(valorTotal)}
+                Valor total da Venda: {formatMoney(valorTotal)}
               </p>
             </div>
           </CardContent>
 
           <CardFooter className="justify-end">
-            <Button type="button" size="xl" variant="secondary" href="/locacoes">
+            <Button type="button" size="xl" variant="secondary" href="/vendas">
               Cancelar
             </Button>
             <Button
               type="button"
               size="xl"
-              disabled={!clienteConfirmado || itens.length === 0 || !dataRetorno}
-              onClick={() => setShowConfirmLocacao(true)}
+              disabled={!clienteConfirmado || itens.length === 0}
+              onClick={() => setShowConfirmVenda(true)}
             >
-              Realizar Locação
+              Realizar Venda
             </Button>
           </CardFooter>
         </div>
@@ -396,8 +365,8 @@ export default function NovaLocacaoPage() {
           <div className="flex flex-col gap-3 text-sm text-foreground">
             <p>
               <strong>{itemPendente.produto.nome}</strong> — {itemPendente.quantidade}x{" "}
-              {formatMoney(itemPendente.produto.precoLocacao ?? 0)} ={" "}
-              {formatMoney(itemPendente.quantidade * (itemPendente.produto.precoLocacao ?? 0))}
+              {formatMoney(itemPendente.produto.precoVenda ?? 0)} ={" "}
+              {formatMoney(itemPendente.quantidade * (itemPendente.produto.precoVenda ?? 0))}
             </p>
             {avisoQuantidadeMinima && (
               <p className="rounded-sm bg-warning/10 p-3 text-warning">
@@ -428,23 +397,23 @@ export default function NovaLocacaoPage() {
       >
         {itemParaRemover !== null && (
           <p className="text-sm text-foreground/70">
-            Remover <strong>{itens[itemParaRemover]?.produto.nome}</strong> da locação?
+            Remover <strong>{itens[itemParaRemover]?.produto.nome}</strong> da venda?
           </p>
         )}
       </Modal>
 
-      {/* Confirmação final da locação */}
+      {/* Confirmação final da venda */}
       <Modal
-        isOpen={showConfirmLocacao}
-        onClose={() => setShowConfirmLocacao(false)}
-        title="Confirmar Locação"
+        isOpen={showConfirmVenda}
+        onClose={() => setShowConfirmVenda(false)}
+        title="Confirmar Venda"
         size="md"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setShowConfirmLocacao(false)}>
+            <Button variant="secondary" onClick={() => setShowConfirmVenda(false)}>
               Cancelar
             </Button>
-            <Button isLoading={isSaving} onClick={handleRealizarLocacao}>
+            <Button isLoading={isSaving} onClick={handleRealizarVenda}>
               Confirmar
             </Button>
           </>
@@ -454,12 +423,12 @@ export default function NovaLocacaoPage() {
           <p>
             Cliente: <strong>{clienteConfirmado?.nome}</strong>
           </p>
-          <p>Data de Devolução: {formatDate(dataRetorno)}</p>
+          <p>Data da Venda: {formatDate(dataVenda)}</p>
           <ul className="flex flex-col gap-1">
             {itens.map((item) => (
               <li key={item.produto.id}>
                 {item.quantidade}x {item.produto.nome} —{" "}
-                {formatMoney(item.quantidade * (item.produto.precoLocacao ?? 0))}
+                {formatMoney(item.quantidade * (item.produto.precoVenda ?? 0))}
               </li>
             ))}
           </ul>

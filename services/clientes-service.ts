@@ -1,5 +1,5 @@
 import { getAccessToken } from "@/utils/auth-storage";
-import { findCidadeById, findCidadeByNome } from "@/services/cidades-service";
+import { findCidadeByNome } from "@/services/cidades-service";
 import type { Cliente, ClienteInput } from "@/types/cliente";
 import type { PaginatedResult } from "@/types/api";
 import { ApiError, apiClient } from "@/utils/api-client";
@@ -13,11 +13,11 @@ interface ClientApiModel {
   document: string;
   address: string;
   cityId: string;
+  city?: { name: string };
   deletedAt: string | null;
 }
 
-async function toCliente(client: ClientApiModel): Promise<Cliente> {
-  const cidade = await findCidadeById(client.cityId);
+function toCliente(client: ClientApiModel): Cliente {
   return {
     id: client.id,
     nome: client.name,
@@ -26,7 +26,7 @@ async function toCliente(client: ClientApiModel): Promise<Cliente> {
     documento: client.document,
     dataNascimento: client.birthDate ? client.birthDate.slice(0, 10) : null,
     endereco: client.address,
-    cidade: cidade?.nome ?? "",
+    cidade: client.city?.name ?? "",
     cityId: client.cityId,
     deletedAt: client.deletedAt,
   };
@@ -40,17 +40,54 @@ async function resolveCityId(nomeCidade: string): Promise<string> {
   return cidade.id;
 }
 
-export async function listClientes(): Promise<Cliente[]> {
+export interface ClientesQuery {
+  page: number;
+  limit: number;
+  search?: string;
+  includeDeleted?: boolean;
+}
+
+// Listagem paginada com busca server-side por nome (tela /clientes).
+export async function searchClientes(
+  query: ClientesQuery
+): Promise<PaginatedResult<Cliente>> {
   const token = getAccessToken();
-  const result = await apiClient.get<PaginatedResult<ClientApiModel>>("/clients?limit=1000", token);
-  return Promise.all(result.items.map(toCliente));
+  const params = new URLSearchParams({
+    page: String(query.page),
+    limit: String(query.limit),
+  });
+  if (query.search?.trim()) params.set("search", query.search.trim());
+  if (query.includeDeleted === false) params.set("includeDeleted", "false");
+
+  const result = await apiClient.get<PaginatedResult<ClientApiModel>>(
+    `/clients?${params.toString()}`,
+    token
+  );
+  return {
+    items: result.items.map(toCliente),
+    total: result.total,
+    page: result.page,
+    limit: result.limit,
+  };
+}
+
+// Busca enxuta para o combobox de cliente nos lançamentos (venda/locação).
+export async function searchClientesParaLancamento(search: string): Promise<Cliente[]> {
+  if (!search.trim()) return [];
+  const result = await searchClientes({
+    page: 1,
+    limit: 20,
+    search,
+    includeDeleted: false,
+  });
+  return result.items;
 }
 
 export async function getCliente(id: string): Promise<Cliente | undefined> {
   const token = getAccessToken();
   try {
     const client = await apiClient.get<ClientApiModel>(`/clients/${id}`, token);
-    return await toCliente(client);
+    return toCliente(client);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) return undefined;
     throw error;

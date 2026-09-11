@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarRange, LayoutDashboard, Package, Tags, Users, X } from "lucide-react";
+import { CalendarRange, LayoutDashboard, Package, ShoppingCart, Tags, Users, X } from "lucide-react";
 import { cn } from "@/utils/cn";
 
 interface SidebarProps {
@@ -16,6 +16,7 @@ const navItems = [
   { href: "/clientes", label: "Clientes", icon: Users },
   { href: "/categorias", label: "Categorias", icon: Tags },
   { href: "/produtos", label: "Produtos", icon: Package },
+  { href: "/vendas", label: "Vendas", icon: ShoppingCart },
   { href: "/locacoes", label: "Locações", icon: CalendarRange },
 ];
 
