@@ -24,23 +24,23 @@ Consome a API em [`../backend`](../backend).
 ## Como rodar
 
 ```bash
-npm install
-
-# .env.local
-echo "NEXT_PUBLIC_API_URL=http://localhost:3333" > .env.local
-
+npm run setup   # cria .env.local a partir de .env.example + npm install
 npm run dev
 ```
 
+(`npm run setup` é idempotente — não sobrescreve um `.env.local` já
+existente. Equivalente manual: `cp .env.example .env.local && npm install`.)
+
 Acesse [http://localhost:3000](http://localhost:3000). Não há cadastro de
-usuário pela interface — o primeiro usuário precisa ser criado direto na
-API (`POST /users`, rota pública), depois o login normal (`/login`) passa
-a funcionar.
+usuário pela interface — o backend precisa já ter um usuário (veja
+["Primeiro acesso"](../backend/README.md#primeiro-acesso) no README do
+backend; `npm run setup` de lá já deixa um usuário padrão pronto).
 
 ## Scripts
 
 | Comando | Descrição |
 | --- | --- |
+| `npm run setup` | `.env.local` (se não existir) + `npm install` |
 | `npm run dev` | Sobe o servidor de desenvolvimento (Turbopack) |
 | `npm run build` | Build de produção |
 | `npm run start` | Sobe o build de produção |
