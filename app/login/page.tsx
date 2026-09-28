@@ -108,10 +108,6 @@ export default function LoginPage() {
           Entrar
         </Button>
       </form>
-
-      <p className="text-center text-xs text-foreground/40">
-        Ambiente de teste: admin@locobra.com.br / senha123
-      </p>
     </AuthLayout>
   );
 }
