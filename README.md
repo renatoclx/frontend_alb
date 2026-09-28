@@ -36,6 +36,10 @@ usuário pela interface — o backend precisa já ter um usuário (veja
 ["Primeiro acesso"](../backend/README.md#primeiro-acesso) no README do
 backend; `npm run setup` de lá já deixa um usuário padrão pronto).
 
+Pra rodar sozinho com o Windows (notebook do cliente, sem ninguém
+executar comandos), o backend tem o script que sobe os dois lados —
+[`../backend/docs/execucao-local-windows.md`](../backend/docs/execucao-local-windows.md).
+
 ## Scripts
 
 | Comando | Descrição |
