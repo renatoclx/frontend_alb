@@ -1,10 +1,11 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { Venda } from "@/types/venda";
 import { formatDate } from "@/utils/date";
+import { CabecalhoEmpresaPdf } from "@/components/pdf/cabecalho-empresa-pdf";
 import { formatMoney, maskDocumento, maskTelefone } from "@/utils/mask";
 
 const styles = StyleSheet.create({
-  page: { flexDirection: "column", padding: 32, fontSize: 10, color: "#1F1F1F", fontFamily: "Helvetica" },
+  page: { flexDirection: "column", padding: 57, fontSize: 10, color: "#1F1F1F", fontFamily: "Helvetica" },
   headerPanel: {
     marginBottom: 16,
     paddingBottom: 16,
@@ -62,6 +63,7 @@ export function RelatorioVendaDocument({ venda, usuarioNome, emitidoEm }: Relato
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.headerPanel}>
+          <CabecalhoEmpresaPdf />
           <Text style={styles.title}>Documento de Venda de Equipamentos</Text>
           <View style={styles.row}>
             <Text style={styles.label}>Cliente</Text>

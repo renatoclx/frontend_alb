@@ -1,24 +1,52 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { CabecalhoEmpresaPdf } from "@/components/pdf/cabecalho-empresa-pdf";
 import type { Venda } from "@/types/venda";
-import { formatMoney, maskDocumento } from "@/utils/mask";
+import { formatDate } from "@/utils/date";
+import { formatMoney, maskDocumento, maskTelefone } from "@/utils/mask";
 
+// Mesmo padrão visual do Documento de Venda (A4): cabeçalho da empresa,
+// dados do cliente, itens, valor recebido e assinatura no rodapé.
 const styles = StyleSheet.create({
-  page: { padding: 24, fontSize: 11, color: "#1F1F1F", fontFamily: "Helvetica" },
-  card: {
-    borderWidth: 1,
-    borderColor: "#E4E4E7",
-    borderStyle: "solid",
-    borderRadius: 12,
-    padding: 24,
+  page: { flexDirection: "column", padding: 57, fontSize: 10, color: "#1F1F1F", fontFamily: "Helvetica" },
+  headerPanel: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E4E4E7",
+    borderBottomStyle: "solid",
   },
-  title: { fontSize: 14, fontWeight: "bold", marginBottom: 24, textAlign: "center" },
-  row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
+  // flex: 1 — empurra o rodapé (valor e assinatura) pro final da folha.
+  bodyPanel: { flex: 1 },
+  title: { fontSize: 16, fontWeight: "bold", marginBottom: 12, textAlign: "center" },
+  row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
   label: { color: "#71717A" },
   value: { fontWeight: "bold" },
-  total: { fontSize: 16, fontWeight: "bold", marginTop: 16, marginBottom: 40, textAlign: "center" },
+  declaracao: { marginBottom: 12, lineHeight: 1.2 },
+  tableHeader: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#1F1F1F",
+    borderBottomStyle: "solid",
+    paddingBottom: 4,
+    marginBottom: 4,
+    fontWeight: "bold",
+  },
+  tableRow: {
+    flexDirection: "row",
+    paddingVertical: 4,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#E4E4E7",
+    borderBottomStyle: "solid",
+  },
+  colNome: { width: "40%" },
+  colQtd: { width: "20%", textAlign: "right" },
+  colUnit: { width: "20%", textAlign: "right" },
+  colTotal: { width: "20%", textAlign: "right" },
+  footerPanel: { paddingTop: 16, borderTopWidth: 1, borderTopColor: "#E4E4E7", borderTopStyle: "solid" },
+  total: { fontSize: 16, fontWeight: "bold", textAlign: "center", marginBottom: 32 },
   signature: { alignItems: "center", marginBottom: 24 },
-  signatureBlank: { height: 32 },
-  signatureLine: { width: 200, borderTopWidth: 1, borderTopColor: "#1F1F1F", borderTopStyle: "solid" },
+  signatureBlank: { height: 36 },
+  signatureLine: { width: 240, borderTopWidth: 1, borderTopColor: "#1F1F1F", borderTopStyle: "solid" },
   signatureName: { marginTop: 4, textAlign: "center" },
   emission: { fontSize: 8, color: "#71717A", textAlign: "center" },
 });
@@ -30,14 +58,13 @@ interface ReciboPagamentoVendaDocumentProps {
 
 export function ReciboPagamentoVendaDocument({ venda, emitidoEm }: ReciboPagamentoVendaDocumentProps) {
   const horaEmissao = emitidoEm.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-  const dataEmissao = emitidoEm.toLocaleDateString("pt-BR");
 
   return (
     <Document>
-      <Page size="A5" style={styles.page}>
-        <View style={styles.card}>
+      <Page size="A4" style={styles.page}>
+        <View style={styles.headerPanel}>
+          <CabecalhoEmpresaPdf />
           <Text style={styles.title}>Recibo de Pagamento</Text>
-
           <View style={styles.row}>
             <Text style={styles.label}>Cliente</Text>
             <Text style={styles.value}>{venda.cliente}</Text>
@@ -50,7 +77,38 @@ export function ReciboPagamentoVendaDocument({ venda, emitidoEm }: ReciboPagamen
             <Text style={styles.label}>Cidade</Text>
             <Text style={styles.value}>{venda.cidade}</Text>
           </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Telefone</Text>
+            <Text style={styles.value}>{maskTelefone(venda.clienteTelefone)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Data da Venda</Text>
+            <Text style={styles.value}>{formatDate(venda.dataVenda)}</Text>
+          </View>
+        </View>
 
+        <View style={styles.bodyPanel}>
+          <Text style={styles.declaracao}>
+            Recebemos de {venda.cliente} a importância de {formatMoney(venda.valorTotal)}, referente à compra dos
+            equipamentos abaixo.
+          </Text>
+          <View style={styles.tableHeader}>
+            <Text style={styles.colNome}>Item</Text>
+            <Text style={styles.colQtd}>Quantidade</Text>
+            <Text style={styles.colUnit}>Valor Unitário</Text>
+            <Text style={styles.colTotal}>Valor Total</Text>
+          </View>
+          {venda.itens.map((item) => (
+            <View key={item.id} style={styles.tableRow}>
+              <Text style={styles.colNome}>{item.produto}</Text>
+              <Text style={styles.colQtd}>{item.quantidade}</Text>
+              <Text style={styles.colUnit}>{formatMoney(item.valorUnitario)}</Text>
+              <Text style={styles.colTotal}>{formatMoney(item.valorUnitario * item.quantidade)}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.footerPanel}>
           <Text style={styles.total}>Valor recebido: {formatMoney(venda.valorTotal)}</Text>
 
           <View style={styles.signature}>
@@ -60,7 +118,7 @@ export function ReciboPagamentoVendaDocument({ venda, emitidoEm }: ReciboPagamen
           </View>
 
           <Text style={styles.emission}>
-            Emitido em {dataEmissao} às {horaEmissao}
+            Emitido em {formatDate(emitidoEm.toISOString())} às {horaEmissao}
           </Text>
         </View>
       </Page>
