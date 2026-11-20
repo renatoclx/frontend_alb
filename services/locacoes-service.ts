@@ -1,5 +1,5 @@
 import { getAccessToken } from "@/utils/auth-storage";
-import type { Locacao, LocacaoItem, LocacaoStatus } from "@/types/locacao";
+import type { Locacao, LocacaoDevolucao, LocacaoItem, LocacaoStatus } from "@/types/locacao";
 import type { PaginatedResult } from "@/types/api";
 import { apiClient } from "@/utils/api-client";
 
@@ -11,6 +11,12 @@ interface RentalItemApiModel {
   product?: { name: string };
 }
 
+interface RentalReturnApiModel {
+  id: string;
+  returnedAt: string;
+  items: { rentalItemId: string; quantity: number }[];
+}
+
 interface RentalApiModel {
   id: string;
   clientId: string;
@@ -18,8 +24,9 @@ interface RentalApiModel {
   startDate: string;
   expectedReturnDate: string;
   returnedAt: string | null;
-  status: "ACTIVE" | "RETURNED" | "DELAY";
+  status: "ACTIVE" | "RETURNED" | "DELAY" | "PARTIALLY_RETURNED";
   items: RentalItemApiModel[];
+  returns?: RentalReturnApiModel[];
   client?: {
     name: string;
     document: string;
@@ -32,18 +39,40 @@ const statusFromApi: Record<RentalApiModel["status"], LocacaoStatus> = {
   ACTIVE: "ativa",
   RETURNED: "devolvida",
   DELAY: "atrasada",
+  PARTIALLY_RETURNED: "devolucao_parcial",
 };
 
 // Filtro de status usado na listagem — bate com o `?status=` do backend.
 export type LocacaoStatusFilter = LocacaoStatus;
 
 function toLocacao(rental: RentalApiModel): Locacao {
+  const returns = rental.returns ?? [];
+  const nomePorItem = new Map(rental.items.map((item) => [item.id, item.product?.name ?? ""]));
+
+  const devolvidoPorItem = new Map<string, number>();
+  for (const rentalReturn of returns) {
+    for (const item of rentalReturn.items) {
+      devolvidoPorItem.set(item.rentalItemId, (devolvidoPorItem.get(item.rentalItemId) ?? 0) + item.quantity);
+    }
+  }
+
   const itens: LocacaoItem[] = rental.items.map((item) => ({
     id: item.id,
     produtoId: item.productId,
     produto: item.product?.name ?? "",
     quantidade: item.quantity,
+    quantidadeDevolvida: devolvidoPorItem.get(item.id) ?? 0,
     valorUnitario: Number(item.unitPrice),
+  }));
+
+  const devolucoes: LocacaoDevolucao[] = returns.map((rentalReturn) => ({
+    id: rentalReturn.id,
+    data: rentalReturn.returnedAt,
+    itens: rentalReturn.items.map((item) => ({
+      itemId: item.rentalItemId,
+      produto: nomePorItem.get(item.rentalItemId) ?? "",
+      quantidade: item.quantity,
+    })),
   }));
 
   return {
@@ -59,6 +88,7 @@ function toLocacao(rental: RentalApiModel): Locacao {
     status: statusFromApi[rental.status],
     valorTotal: Number(rental.total),
     itens,
+    devolucoes,
   };
 }
 
@@ -115,10 +145,36 @@ export async function createLocacao(input: LocacaoInput): Promise<Locacao> {
   return toLocacao(rental);
 }
 
-// Muda o status para DEVOLVIDA e restaura o estoque de cada item — tudo já
-// feito pela API numa transação única (docs/screens.md, Locação > Listagem).
+// Devolve tudo o que ainda falta (após eventuais devoluções avulsas), muda o
+// status para DEVOLVIDA e restaura o estoque — tudo feito pela API numa
+// transação única (docs/screens.md, Locação > Listagem).
 export async function devolverLocacao(id: string): Promise<Locacao> {
   const token = getAccessToken();
   const rental = await apiClient.patch<RentalApiModel>(`/rentals/${id}/return`, {}, token);
+  return toLocacao(rental);
+}
+
+export interface DevolucaoItemInput {
+  itemId: string;
+  quantidade: number;
+}
+
+// Devolução avulsa: só os itens/quantidades informados voltam ao estoque. A
+// API muda o status para DEVOLUÇÃO PARCIAL (ou DEVOLVIDA, se não sobrar nada).
+export async function devolverItensLocacao(id: string, itens: DevolucaoItemInput[]): Promise<Locacao> {
+  const token = getAccessToken();
+  const rental = await apiClient.post<RentalApiModel>(
+    `/rentals/${id}/returns`,
+    { items: itens.map((item) => ({ rentalItemId: item.itemId, quantity: item.quantidade })) },
+    token
+  );
+  return toLocacao(rental);
+}
+
+// Locação atualizada (itens, devoluções e status) — usada no detalhe das
+// Últimas movimentações do Dashboard.
+export async function getLocacao(id: string): Promise<Locacao> {
+  const token = getAccessToken();
+  const rental = await apiClient.get<RentalApiModel>(`/rentals/${id}`, token);
   return toLocacao(rental);
 }

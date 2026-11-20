@@ -1,12 +1,15 @@
+import { Eye } from "lucide-react";
+import { IconButton } from "@/components/ui/icon-button";
 import { Tag } from "@/components/ui/tag";
 import type { ProximaDevolucao } from "@/types/dashboard";
 import { formatDate } from "@/utils/date";
 
 interface UpcomingReturnsCardProps {
   data: ProximaDevolucao[];
+  onView: (devolucao: ProximaDevolucao) => void;
 }
 
-export function UpcomingReturnsCard({ data }: UpcomingReturnsCardProps) {
+export function UpcomingReturnsCard({ data, onView }: UpcomingReturnsCardProps) {
   if (data.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-foreground/50">
@@ -25,15 +28,22 @@ export function UpcomingReturnsCard({ data }: UpcomingReturnsCardProps) {
               Prevista para {formatDate(devolucao.dataPrevista)}
             </span>
           </div>
-          {devolucao.status === "atrasada" ? (
-            <Tag variant="error" size="sm">
-              Em atraso há {devolucao.diasAtraso} dia(s)
-            </Tag>
-          ) : (
-            <Tag variant="info" size="sm">
-              No prazo
-            </Tag>
-          )}
+          <div className="flex items-center gap-1">
+            {devolucao.status === "atrasada" ? (
+              <Tag variant="error" size="sm">
+                Em atraso há {devolucao.diasAtraso} dia(s)
+              </Tag>
+            ) : (
+              <Tag variant="info" size="sm">
+                No prazo
+              </Tag>
+            )}
+            <IconButton
+              icon={<Eye className="size-4" />}
+              label="Visualizar locação"
+              onClick={() => onView(devolucao)}
+            />
+          </div>
         </li>
       ))}
     </ul>
