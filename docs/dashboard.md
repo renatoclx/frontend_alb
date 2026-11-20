@@ -71,6 +71,12 @@ Colunas:
 - Valor
 - Data
 - Status
+- Ação (Visualizar)
+
+A ação Visualizar abre um dialog (modal-lg), somente leitura, com os dados atualizados da movimentação (buscados ao abrir):
+
+- Locação: Documento, Cidade e Telefone do cliente; Data de Início, Data de Retorno e data da devolução (quando devolvida); Status; tabela de itens (Item, Locado, Devolvido, Pendente, Valor Unitário, Valor Total); Total; e o histórico de devoluções (data/hora, itens e quantidades), quando houver.
+- Venda: Documento, Cidade e Telefone do cliente; Data da Venda; tabela de itens (Item, Quantidade, Valor Unitário, Valor Total); e Total.
 
 ---
 
@@ -79,6 +85,8 @@ Colunas:
 Listar as devoluções previstas para os próximos dias.
 
 As devoluções em atraso deverão aparecer primeiro.
+
+Cada devolução prevista possui a ação Visualizar, que abre o mesmo dialog de detalhes da locação usado nas Últimas movimentações.
 
 ---
 

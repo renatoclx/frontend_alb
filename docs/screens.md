@@ -341,11 +341,15 @@ Layout compartilhado entre as telas abaixo — ver seção "Autenticação" em
 
 ## Recibo de Pagamento
 
-- O recibo deverá ser gerado em PDF em um modelo para impressão (A5).
-- "Envolver" as informações com uma pequena borda com cantos arrendodados para melhor UX.
+- O recibo deverá ser gerado em PDF em um modelo para impressão (A4), no mesmo padrão visual do Documento de Venda.
+- Utiliza o cabeçalho da empresa (logo, telefones, cidade e CNPJ).
 - Neste recibo deverá conter:
-  - Nome, documento e cidade do cliente;
-  - Valor total da venda centralizado no documento;
+  - Título (Recibo de Pagamento);
+  - Nome, documento, cidade e telefone do cliente;
+  - Data da Venda;
+  - Declaração de recebimento ("Recebemos de <cliente> a importância de <valor>, referente à compra dos equipamentos abaixo.");
+  - Tabela de itens (Item, Quantidade, Valor Unitário, Valor Total);
+  - Valor total da venda (Valor recebido) centralizado, no rodapé da folha;
   - Campo para assinatura do recebedor nome alinhados ao centro, um abaixo do outro.
   - Data e horário de emissão;
 
@@ -358,7 +362,7 @@ Layout compartilhado entre as telas abaixo — ver seção "Autenticação" em
 ### Filtros de pesquisa
 
 - Nome do Cliente.
-- Status da locação (ATIVA, DEVOLVIDA, EM ATRASO).
+- Status da locação (ATIVA, DEVOLUÇÃO PARCIAL, DEVOLVIDA, EM ATRASO).
 - Botão Realizar Locação.
 
 ### Campos
@@ -378,14 +382,53 @@ Layout compartilhado entre as telas abaixo — ver seção "Autenticação" em
 - Realizar devolução.
 - Dentro do kebab:
   - Imprimir Relatório de Locação;
+  - Imprimir Extrato da Locação;
   - Gerar Recibo para pagamento;
+  - Devolver avulso;
+  - Visualizar devoluções;
 
 ### Regras específicas
 
 - A tag de status EM ATRASO deverá contar os dias juntamente com a tag (ex: EM ATRASO HÁ XX DIA(S)).
 - A ação Visualizar itens locados deve ser a padrão na coluna Ações (outras opções ficam no dropdown).
 - A ação Realizar devolução deve realizar justamente a devolução dos itens locados para o lançamento em específico.
-- Ao clicar em Realizar devolução, um modal de confirmação deve surgir. Ao confirmar, o Status da locação deve ser alterado para DEVOLVIDA e o estoque reestabelecido.
+- Ao clicar em Realizar devolução, um modal de confirmação deve surgir. Ao confirmar, todos os itens ainda pendentes são devolvidos, o Status da locação deve ser alterado para DEVOLVIDA, o estoque reestabelecido e o Termo de Devolução gerado.
+- A ação Devolver avulso abre um modal (modal-lg) com os itens que ainda têm quantidade pendente (Locado, Já devolvido, Pendente e campo Devolver agora). Ao avançar, um modal de confirmação lista os itens e quantidades. Ao confirmar, o estoque é reestabelecido apenas das quantidades devolvidas, o Status passa a DEVOLUÇÃO PARCIAL (ou DEVOLVIDA, se não restar nada pendente) e o Termo de Devolução é gerado.
+- A ação Devolver avulso fica desabilitada para locações DEVOLVIDAS.
+- A ação Visualizar devoluções abre um modal (modal-lg) com o histórico de devoluções da locação (data/hora, itens e quantidades), com a opção de reimprimir o Termo de Devolução de cada uma.
+- Uma locação com DEVOLUÇÃO PARCIAL cuja data de retorno já passou é exibida como EM ATRASO.
+- As devoluções não alteram o Contrato de Locação nem o Recibo de Pagamento (continuam com os itens e valores originais).
+- A ação Imprimir Extrato da Locação fica disponível em qualquer status e gera o Extrato com a situação atual da locação.
+- Quando uma devolução (avulsa ou total) encerra a locação (status DEVOLVIDA), além do Termo de Devolução, o Extrato da Locação é gerado automaticamente.
+
+## Extrato da Locação
+
+- O Extrato deverá ser gerado em PDF em um modelo para impressão (A4), sempre com a situação atual da locação.
+- Utiliza o mesmo cabeçalho da empresa do Contrato de Locação (logo, telefones, cidade e CNPJ).
+- O Contrato de Locação não é alterado pelas devoluções; o Extrato é o documento que reflete a situação do contrato.
+- Neste extrato deverá conter:
+  - Título (Extrato da Locação);
+  - Nome, Documento, Cidade, Telefone (Cliente);
+  - Data de Início, Data de Devolução Prevista e data/hora de encerramento (quando devolvida);
+  - Situação atual (Ativa, Devolução parcial, Em atraso há XX dia(s) ou Devolvida);
+  - Tabela de itens (Item, Locado, Devolvido, Pendente, Valor Unitário, Valor Total);
+  - Histórico de devoluções (data/hora e itens devolvidos);
+  - Valor total da Locação;
+  - Campo para assinatura do cliente com seu respectivo nome alinhados ao centro, um abaixo do outro;
+  - Ao final do PDF, exibir data e horário de emissão, juntamente com o usuário que gerou.
+
+## Termo de Devolução
+
+- O Termo deverá ser gerado em PDF em um modelo para impressão (A4), a cada devolução (avulsa ou total).
+- Utiliza o mesmo cabeçalho da empresa do Contrato de Locação (logo, telefones, cidade e CNPJ).
+- Neste termo deverá conter:
+  - Título (Termo de Devolução de Equipamentos);
+  - Nome, Documento, Cidade, Telefone (Cliente);
+  - Data de início da locação e data/hora da devolução;
+  - Declaração do cliente de que devolveu os equipamentos listados;
+  - Itens devolvidos naquela devolução e suas quantidades;
+  - Campo para assinatura do cliente com seu respectivo nome alinhados ao centro, um abaixo do outro;
+  - Ao final do PDF, exibir data e horário de emissão, juntamente com o usuário que gerou.
 
 ---
 
@@ -446,7 +489,7 @@ Layout compartilhado entre as telas abaixo — ver seção "Autenticação" em
 - O Relatório se divirá em 03 pequenos painéis;
 - Nestes painéis deverão conter:
   - Cabeçalho:
-    - Título (Documento de Locação de Equipamentos).
+    - Título (Contrato de Locação de Equipamentos).
     - Nome, Documento, Cidade, Telefone (Cliente);
     - Data de Início;
     - Data de Devolução;
@@ -465,11 +508,15 @@ Layout compartilhado entre as telas abaixo — ver seção "Autenticação" em
 
 ## Recibo de Pagamento
 
-- O recibo deverá ser gerado em PDF em um modelo para impressão (A5).
-- "Envolver" as informações com uma pequena borda com cantos arrendodados para melhor UX.
+- O recibo deverá ser gerado em PDF em um modelo para impressão (A4), no mesmo padrão visual do Contrato de Locação.
+- Utiliza o cabeçalho da empresa (logo, telefones, cidade e CNPJ).
 - Neste recibo deverá conter:
-  - Nome, documento e cidade do cliente;
-  - Valor total da locação centralizado no documento;
+  - Título (Recibo de Pagamento);
+  - Nome, documento, cidade e telefone do cliente;
+  - Data de Início e Data de Devolução;
+  - Declaração de recebimento ("Recebemos de <cliente> a importância de <valor>, referente à locação dos equipamentos abaixo.");
+  - Tabela de itens (Item, Quantidade, Valor Unitário, Valor Total);
+  - Valor total da locação (Valor recebido) centralizado, no rodapé da folha;
   - Campo para assinatura do recebedor nome alinhados ao centro, um abaixo do outro.
   - Data e horário de emissão;
 
