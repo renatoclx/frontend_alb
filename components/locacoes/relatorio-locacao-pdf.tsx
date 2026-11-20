@@ -1,10 +1,11 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { Locacao } from "@/types/locacao";
 import { formatDate } from "@/utils/date";
+import { CabecalhoEmpresaPdf } from "@/components/pdf/cabecalho-empresa-pdf";
 import { formatMoney, maskDocumento, maskTelefone } from "@/utils/mask";
 
 const styles = StyleSheet.create({
-  page: { flexDirection: "column", padding: 32, fontSize: 10, color: "#1F1F1F", fontFamily: "Helvetica" },
+  page: { flexDirection: "column", padding: 57, fontSize: 10, color: "#1F1F1F", fontFamily: "Helvetica" },
   headerPanel: {
     marginBottom: 16,
     paddingBottom: 16,
@@ -62,7 +63,8 @@ export function RelatorioLocacaoDocument({ locacao, usuarioNome, emitidoEm }: Re
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.headerPanel}>
-          <Text style={styles.title}>Documento de Locação de Equipamentos</Text>
+          <CabecalhoEmpresaPdf />
+          <Text style={styles.title}>Contrato de Locação de Equipamentos</Text>
           <View style={styles.row}>
             <Text style={styles.label}>Cliente</Text>
             <Text style={styles.value}>{locacao.cliente}</Text>

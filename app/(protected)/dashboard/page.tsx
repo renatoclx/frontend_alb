@@ -6,6 +6,10 @@ import { ButtonGroup } from "@/components/ui/button-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
+import {
+  MovimentacaoDetalhesModal,
+  type MovimentacaoSelecionada,
+} from "@/components/dashboard/movimentacao-detalhes-modal";
 import { RecentMovementsTable } from "@/components/dashboard/recent-movements-table";
 import { RevenueChart } from "@/components/dashboard/revenue-chart";
 import { UpcomingReturnsCard } from "@/components/dashboard/upcoming-returns-card";
@@ -38,6 +42,7 @@ export default function DashboardPage() {
   const [revenueDays, setRevenueDays] = useState<RevenuePeriodDays>(30);
   const [movements, setMovements] = useState<Movimentacao[] | null>(null);
   const [returns, setReturns] = useState<ProximaDevolucao[] | null>(null);
+  const [selecionada, setSelecionada] = useState<MovimentacaoSelecionada | null>(null);
 
   function handleRevenuePeriodChange(days: RevenuePeriodDays) {
     setRevenueDays(days);
@@ -124,7 +129,7 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent className="pt-0">
           {movements ? (
-            <RecentMovementsTable data={movements} />
+            <RecentMovementsTable data={movements} onView={setSelecionada} />
           ) : (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 5 }).map((_, index) => (
@@ -141,7 +146,10 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent className="pt-0">
           {returns ? (
-            <UpcomingReturnsCard data={returns} />
+            <UpcomingReturnsCard
+              data={returns}
+              onView={(devolucao) => setSelecionada({ id: devolucao.id, tipo: "locacao", cliente: devolucao.cliente })}
+            />
           ) : (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 3 }).map((_, index) => (
@@ -151,6 +159,8 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {selecionada && <MovimentacaoDetalhesModal movimentacao={selecionada} onClose={() => setSelecionada(null)} />}
     </div>
   );
 }

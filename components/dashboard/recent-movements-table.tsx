@@ -1,12 +1,15 @@
+import { Eye } from "lucide-react";
+import { IconButton } from "@/components/ui/icon-button";
 import { Table } from "@/components/ui/table";
 import { Tag } from "@/components/ui/tag";
 import type { Movimentacao, MovimentacaoStatus } from "@/types/dashboard";
 import { formatDate } from "@/utils/date";
-import { locacaoStatusLabel, locacaoStatusVariant } from "@/utils/locacao-status";
+import { locacaoStatusLabel, locacaoStatusVariant, type LocacaoStatusVariant } from "@/utils/locacao-status";
 import { formatMoney } from "@/utils/mask";
 
 interface RecentMovementsTableProps {
   data: Movimentacao[];
+  onView: (movimentacao: Movimentacao) => void;
 }
 
 // Estende os mapas de status de locação com a chave "concluida" (vendas).
@@ -15,12 +18,12 @@ const statusLabel: Record<MovimentacaoStatus, string> = {
   concluida: "Concluída",
 };
 
-const statusVariant: Record<MovimentacaoStatus, "info" | "success" | "error"> = {
+const statusVariant: Record<MovimentacaoStatus, LocacaoStatusVariant> = {
   ...locacaoStatusVariant,
   concluida: "success",
 };
 
-export function RecentMovementsTable({ data }: RecentMovementsTableProps) {
+export function RecentMovementsTable({ data, onView }: RecentMovementsTableProps) {
   return (
     <Table
       columns={[
@@ -43,6 +46,17 @@ export function RecentMovementsTable({ data }: RecentMovementsTableProps) {
             <Tag variant={statusVariant[movimentacao.status]} size="sm">
               {statusLabel[movimentacao.status]}
             </Tag>
+          ),
+        },
+        {
+          key: "acao",
+          header: "Ação",
+          render: (movimentacao) => (
+            <IconButton
+              icon={<Eye className="size-4" />}
+              label={movimentacao.tipo === "venda" ? "Visualizar venda" : "Visualizar locação"}
+              onClick={() => onView(movimentacao)}
+            />
           ),
         },
       ]}

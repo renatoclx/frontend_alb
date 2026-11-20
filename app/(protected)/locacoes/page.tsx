@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, FileText, MoreVertical, PackageCheck, Plus, Receipt } from "lucide-react";
+import { ClipboardList, Eye, FileText, History, MoreVertical, PackageCheck, PackageMinus, Plus, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { IconButton } from "@/components/ui/icon-button";
@@ -14,11 +14,20 @@ import { Tag } from "@/components/ui/tag";
 import { Pagination } from "@/components/ui/pagination";
 import { RelatorioLocacaoDocument } from "@/components/locacoes/relatorio-locacao-pdf";
 import { ReciboPagamentoDocument } from "@/components/locacoes/recibo-pagamento-pdf";
+import { TermoDevolucaoDocument } from "@/components/locacoes/termo-devolucao-pdf";
+import { ExtratoLocacaoDocument } from "@/components/locacoes/extrato-locacao-pdf";
+import { DevolucaoAvulsaModal } from "@/components/locacoes/devolucao-avulsa-modal";
+import { DevolucoesModal } from "@/components/locacoes/devolucoes-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToast } from "@/hooks/use-toast";
-import { devolverLocacao, searchLocacoes } from "@/services/locacoes-service";
-import type { Locacao, LocacaoStatus } from "@/types/locacao";
+import {
+  devolverItensLocacao,
+  devolverLocacao,
+  searchLocacoes,
+  type DevolucaoItemInput,
+} from "@/services/locacoes-service";
+import type { Locacao, LocacaoDevolucao, LocacaoStatus } from "@/types/locacao";
 import { daysSince, formatDate } from "@/utils/date";
 import {
   locacaoStatusFilterOptions,
@@ -44,6 +53,8 @@ export default function LocacoesPage() {
   const [locacaoToView, setLocacaoToView] = useState<Locacao | null>(null);
   const [locacaoParaDevolver, setLocacaoParaDevolver] = useState<Locacao | null>(null);
   const [isDevolvendo, setIsDevolvendo] = useState(false);
+  const [locacaoDevolucaoAvulsa, setLocacaoDevolucaoAvulsa] = useState<Locacao | null>(null);
+  const [locacaoDevolucoes, setLocacaoDevolucoes] = useState<Locacao | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,14 +119,67 @@ export default function LocacoesPage() {
     }
   }
 
+  async function handleImprimirTermo(locacao: Locacao, devolucao: LocacaoDevolucao) {
+    try {
+      await downloadPdf(
+        <TermoDevolucaoDocument
+          locacao={locacao}
+          devolucao={devolucao}
+          usuarioNome={user?.name ?? ""}
+          emitidoEm={new Date()}
+        />,
+        `termo-devolucao-${devolucao.id}.pdf`
+      );
+    } catch {
+      notify("error", "Não foi possível gerar o termo de devolução.");
+    }
+  }
+
+  async function handleImprimirExtrato(locacao: Locacao) {
+    try {
+      await downloadPdf(
+        <ExtratoLocacaoDocument locacao={locacao} usuarioNome={user?.name ?? ""} emitidoEm={new Date()} />,
+        `extrato-locacao-${locacao.id}.pdf`
+      );
+    } catch {
+      notify("error", "Não foi possível gerar o extrato da locação.");
+    }
+  }
+
+  // Toda devolução (avulsa ou total) gera o Termo com os itens daquela
+  // devolução — a mais recente do histórico retornado pela API. Se a
+  // devolução encerrou a locação, gera também o Extrato final.
+  async function imprimirDocumentosDaDevolucao(locacao: Locacao) {
+    const ultima = locacao.devolucoes.at(-1);
+    if (ultima) await handleImprimirTermo(locacao, ultima);
+    if (locacao.status === "devolvida") await handleImprimirExtrato(locacao);
+  }
+
+  async function handleConfirmarDevolucaoAvulsa(itens: DevolucaoItemInput[]) {
+    if (!locacaoDevolucaoAvulsa) return;
+    setIsDevolvendo(true);
+    try {
+      const atualizada = await devolverItensLocacao(locacaoDevolucaoAvulsa.id, itens);
+      notify("success", "Devolução avulsa realizada com sucesso.");
+      setLocacaoDevolucaoAvulsa(null);
+      reload();
+      await imprimirDocumentosDaDevolucao(atualizada);
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Não foi possível realizar a devolução.");
+    } finally {
+      setIsDevolvendo(false);
+    }
+  }
+
   async function handleConfirmarDevolucao() {
     if (!locacaoParaDevolver) return;
     setIsDevolvendo(true);
     try {
-      await devolverLocacao(locacaoParaDevolver.id);
+      const atualizada = await devolverLocacao(locacaoParaDevolver.id);
       notify("success", "Devolução realizada com sucesso.");
       setLocacaoParaDevolver(null);
       reload();
+      await imprimirDocumentosDaDevolucao(atualizada);
     } catch (error) {
       notify("error", error instanceof Error ? error.message : "Não foi possível realizar a devolução.");
     } finally {
@@ -204,9 +268,25 @@ export default function LocacoesPage() {
                         onClick: () => handlePrintRelatorio(locacao),
                       },
                       {
+                        label: "Imprimir Extrato da Locação",
+                        icon: <ClipboardList className="size-4" />,
+                        onClick: () => handleImprimirExtrato(locacao),
+                      },
+                      {
                         label: "Gerar Recibo para pagamento",
                         icon: <Receipt className="size-4" />,
                         onClick: () => handleGerarRecibo(locacao),
+                      },
+                      {
+                        label: "Devolver avulso",
+                        icon: <PackageMinus className="size-4" />,
+                        disabled: locacao.status === "devolvida",
+                        onClick: () => setLocacaoDevolucaoAvulsa(locacao),
+                      },
+                      {
+                        label: "Visualizar devoluções",
+                        icon: <History className="size-4" />,
+                        onClick: () => setLocacaoDevolucoes(locacao),
                       },
                     ]}
                   />
@@ -285,11 +365,26 @@ export default function LocacoesPage() {
       >
         {locacaoParaDevolver && (
           <p className="text-sm text-foreground/70">
-            Confirmar a devolução dos itens locados para <strong>{locacaoParaDevolver.cliente}</strong>? O estoque
-            será restabelecido.
+            Confirmar a devolução de todos os itens pendentes para <strong>{locacaoParaDevolver.cliente}</strong>? O
+            estoque será restabelecido e o Termo de Devolução será gerado.
           </p>
         )}
       </Modal>
+
+      {locacaoDevolucaoAvulsa && (
+        <DevolucaoAvulsaModal
+          locacao={locacaoDevolucaoAvulsa}
+          isSubmitting={isDevolvendo}
+          onClose={() => setLocacaoDevolucaoAvulsa(null)}
+          onConfirm={handleConfirmarDevolucaoAvulsa}
+        />
+      )}
+
+      <DevolucoesModal
+        locacao={locacaoDevolucoes}
+        onClose={() => setLocacaoDevolucoes(null)}
+        onImprimirTermo={handleImprimirTermo}
+      />
     </div>
   );
 }

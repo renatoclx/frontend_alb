@@ -97,3 +97,11 @@ export async function createVenda(input: VendaInput): Promise<Venda> {
   );
   return toVenda(sale);
 }
+
+// Venda com cliente e itens — usada no detalhe das Últimas movimentações do
+// Dashboard.
+export async function getVenda(id: string): Promise<Venda> {
+  const token = getAccessToken();
+  const sale = await apiClient.get<SaleApiModel>(`/sales/${id}`, token);
+  return toVenda(sale);
+}

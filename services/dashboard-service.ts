@@ -9,6 +9,8 @@ import type {
   RevenuePoint,
 } from "@/types/dashboard";
 
+type RentalStatusApi = "ACTIVE" | "RETURNED" | "DELAY" | "PARTIALLY_RETURNED";
+
 interface MetricsApiModel {
   monthRevenue: number;
   activeRentals: number;
@@ -29,21 +31,22 @@ interface MovementApiModel {
   client: string;
   total: number;
   date: string;
-  status: "ACTIVE" | "RETURNED" | "DELAY" | "CONCLUDED";
+  status: RentalStatusApi | "CONCLUDED";
 }
 
 interface UpcomingReturnApiModel {
   id: string;
   client: string;
   expectedReturnDate: string;
-  status: "ACTIVE" | "RETURNED" | "DELAY";
+  status: RentalStatusApi;
   daysOverdue: number;
 }
 
-const rentalStatusFromApi: Record<"ACTIVE" | "RETURNED" | "DELAY", LocacaoStatus> = {
+const rentalStatusFromApi: Record<RentalStatusApi, LocacaoStatus> = {
   ACTIVE: "ativa",
   RETURNED: "devolvida",
   DELAY: "atrasada",
+  PARTIALLY_RETURNED: "devolucao_parcial",
 };
 
 const movementStatusFromApi: Record<MovementApiModel["status"], MovimentacaoStatus> = {
